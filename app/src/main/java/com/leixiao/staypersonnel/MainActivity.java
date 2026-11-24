@@ -180,7 +180,8 @@ public class MainActivity extends Activity {
         recognize.setOnClickListener(v->autoRecognize());
         operation.addView(ai); gap(operation,16);
 
-        LinearLayout base=row(); typeSpinner=spinner(TYPES); roomInput=edit("请输入宿舍号",false);
+        boolean compact = getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density < 600;
+        LinearLayout base=compact?column():row(); typeSpinner=spinner(TYPES); roomInput=edit("请输入宿舍号",false);
         field(base,"住宿类型",typeSpinner); field(base,"宿舍号",roomInput);
         operation.addView(base); gap(operation,14);
         typeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
@@ -188,7 +189,7 @@ public class MainActivity extends Activity {
             public void onNothingSelected(android.widget.AdapterView<?> p){}
         });
 
-        singleArea=row(); nameInput=edit("请输入姓名",false); phoneInput=edit("请输入联系电话",true);
+        singleArea=compact?column():row(); nameInput=edit("请输入姓名",false); phoneInput=edit("请输入联系电话",true);
         field(singleArea,"人员姓名",nameInput); field(singleArea,"联系电话",phoneInput);
         operation.addView(singleArea); gap(operation,12);
 
@@ -200,13 +201,16 @@ public class MainActivity extends Activity {
         add.setOnClickListener(v->addPersonRow(multiRows,addRows));
         operation.addView(multiArea); multiArea.setVisibility(View.GONE); gap(operation,12);
 
-        LinearLayout actions=row();
+        LinearLayout actions=column();
+        LinearLayout actionTop=row();
         modeButton=button("切换批量录入模式",Color.rgb(160,174,192),Color.rgb(130,145,165),42);
         Button clear=button("一键清空所有数据",Color.rgb(237,137,54),Color.rgb(221,107,32),42);
         Button export=button("导出Excel",GREEN,Color.rgb(56,161,105),42);
-        actions.addView(modeButton,new LinearLayout.LayoutParams(0,dp(42),1));
-        LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,dp(42),1); ap.leftMargin=dp(6);
-        actions.addView(clear,ap); LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(0,dp(42),1); ep.leftMargin=dp(6); actions.addView(export,ep);
+        actionTop.addView(modeButton,new LinearLayout.LayoutParams(0,dp(42),1));
+        LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,dp(42),1); ap.leftMargin=dp(8);
+        actionTop.addView(clear,ap); actions.addView(actionTop);
+        LinearLayout actionBottom=row(); LinearLayout.LayoutParams ebp=new LinearLayout.LayoutParams(dp(132),dp(42)); ebp.topMargin=dp(8);
+        actionBottom.addView(export,ebp); actions.addView(actionBottom);
         operation.addView(actions);
         modeButton.setOnClickListener(v->toggleMode());
         clear.setOnClickListener(v->confirmClear());
@@ -221,9 +225,11 @@ public class MainActivity extends Activity {
         HorizontalScrollView tabScroll=new HorizontalScrollView(this); tabScroll.setHorizontalScrollBarEnabled(false);
         tabRow=row(); tabScroll.addView(tabRow); LinearLayout.LayoutParams tsp=new LinearLayout.LayoutParams(-1,dp(44)); tsp.topMargin=dp(8); searchCard.addView(tabScroll,tsp);
         for(int i=0;i<SEARCH_TYPES.length;i++){ final int idx=i; Button tab=button(SEARCH_TYPES[i],i==0?PURPLE:Color.rgb(180,190,205),i==0?Color.rgb(118,75,162):Color.rgb(160,174,192),34); LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-2,dp(34)); tp.rightMargin=dp(6); tabRow.addView(tab,tp); tab.setOnClickListener(v->setSearchType(idx)); }
-        LinearLayout sr=row(); searchLabel=text("关键词：",13,INK,false); sr.addView(searchLabel);
-        searchInput=edit("输入关键词搜索（支持模糊匹配）",false); sr.addView(searchInput,new LinearLayout.LayoutParams(0,dp(38),1));
-        Button search=button("搜索",PURPLE,Color.rgb(118,75,162),38); LinearLayout.LayoutParams sbp=new LinearLayout.LayoutParams(-2,dp(38)); sbp.leftMargin=dp(6); sr.addView(search,sbp);
+        LinearLayout sr=column(); LinearLayout searchInputRow=row();
+        searchLabel=text("关键词：",13,INK,false); searchInputRow.addView(searchLabel);
+        searchInput=edit("输入关键词搜索（支持模糊匹配）",false); LinearLayout.LayoutParams sip=new LinearLayout.LayoutParams(0,dp(38),1); sip.leftMargin=dp(6); searchInputRow.addView(searchInput,sip);
+        sr.addView(searchInputRow);
+        Button search=button("搜索",PURPLE,Color.rgb(118,75,162),38); LinearLayout.LayoutParams sbp=new LinearLayout.LayoutParams(dp(92),dp(38)); sbp.topMargin=dp(7); sr.addView(search,sbp);
         searchCard.addView(sr); search.setOnClickListener(v->{searchKeyword=searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);renderTable();});
         searchInput.setOnEditorActionListener((v,id,event)->{searchKeyword=searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);renderTable();return false;});
         Button advanced=button("高级筛选",Color.rgb(160,174,192),Color.rgb(130,145,165),34);
@@ -273,9 +279,8 @@ public class MainActivity extends Activity {
     }
     private void addPersonRow(LinearLayout parent,ArrayList<PersonRow> list){
         LinearLayout line=row(); line.setPadding(0,dp(5),0,dp(5));
-        LinearLayout fields=column(); EditText n=edit("请输入姓名",false),p=edit("请输入联系电话",true);
-        fields.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));
-        LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(40));pp.topMargin=dp(5);fields.addView(p,pp);
+        LinearLayout fields=row(); EditText n=edit("请输入姓名",false),p=edit("请输入联系电话",true);
+        field(fields,"姓名",n); field(fields,"联系电话",p);
         line.addView(fields,new LinearLayout.LayoutParams(0,-2,1));
         Button del=button("删除",RED,Color.rgb(197,48,48),34);LinearLayout.LayoutParams dp1=new LinearLayout.LayoutParams(dp(64),dp(34));dp1.leftMargin=dp(8);line.addView(del,dp1);
         PersonRow pr=new PersonRow(n,p,line);list.add(pr);parent.addView(line);
@@ -408,8 +413,8 @@ public class MainActivity extends Activity {
         dlg.show();dlg.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);editDialog=dlg;
     }
     private void addDialogPerson(LinearLayout parent,ArrayList<PersonRow> rows,String name,String phone){
-        LinearLayout line=row();LinearLayout fields=column();EditText n=edit("请输入姓名",false),p=edit("请输入联系电话",true);n.setText(name);p.setText(phone);
-        fields.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(40));pp.topMargin=dp(5);fields.addView(p,pp);
+        LinearLayout line=row();LinearLayout fields=row();EditText n=edit("请输入姓名",false),p=edit("请输入联系电话",true);n.setText(name);p.setText(phone);
+        field(fields,"姓名",n); field(fields,"联系电话",p);
         line.addView(fields,new LinearLayout.LayoutParams(0,-2,1));Button del=button("删除",RED,Color.rgb(197,48,48),32);LinearLayout.LayoutParams dp=new LinearLayout.LayoutParams(dp(60),dp(32));dp.leftMargin=dp(6);line.addView(del,dp);
         PersonRow pr=new PersonRow(n,p,line);rows.add(pr);parent.addView(line);del.setOnClickListener(v->{if(rows.size()<=1){toast("至少保留1位人员信息");return;}rows.remove(pr);parent.removeView(line);});
     }
