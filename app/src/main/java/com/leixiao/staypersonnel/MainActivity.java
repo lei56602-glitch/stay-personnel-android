@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
     private final ArrayList<PersonRow> addRows = new ArrayList<>();
     private AlertDialog editDialog;
     private String pendingExportName;
+    private boolean compactScreen;
 
     private static class PersonRow {
         EditText name, phone;
@@ -153,7 +154,8 @@ public class MainActivity extends Activity {
             new int[]{Color.rgb(224,247,250),Color.rgb(232,245,233),Color.rgb(243,229,245)});
         frame.setBackground(bg);
         ScrollView scroll=new ScrollView(this); scroll.setFillViewport(false);
-        LinearLayout content=column(); content.setPadding(dp(10),dp(10),dp(10),dp(96));
+        frame.setFitsSystemWindows(true);
+        LinearLayout content=column(); content.setPadding(dp(12),dp(18),dp(12),dp(116));
         scroll.addView(content); frame.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout header=card(20); header.setGravity(Gravity.CENTER);
         TextView title=text("住宿人员名单统计系统",24,INK,true); title.setGravity(Gravity.CENTER);
@@ -181,7 +183,8 @@ public class MainActivity extends Activity {
         operation.addView(ai); gap(operation,16);
 
         boolean compact = getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density < 600;
-        LinearLayout base=compact?column():row(); typeSpinner=spinner(TYPES); roomInput=edit("请输入宿舍号",false);
+        compactScreen=compact;
+        LinearLayout base=row(); typeSpinner=spinner(TYPES); roomInput=edit("请输入宿舍号",false);
         field(base,"住宿类型",typeSpinner); field(base,"宿舍号",roomInput);
         operation.addView(base); gap(operation,14);
         typeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
@@ -189,7 +192,7 @@ public class MainActivity extends Activity {
             public void onNothingSelected(android.widget.AdapterView<?> p){}
         });
 
-        singleArea=compact?column():row(); nameInput=edit("请输入姓名",false); phoneInput=edit("请输入联系电话",true);
+        singleArea=row(); nameInput=edit("请输入姓名",false); phoneInput=edit("请输入联系电话",true);
         field(singleArea,"人员姓名",nameInput); field(singleArea,"联系电话",phoneInput);
         operation.addView(singleArea); gap(operation,12);
 
@@ -209,8 +212,8 @@ public class MainActivity extends Activity {
         actionTop.addView(modeButton,new LinearLayout.LayoutParams(0,dp(42),1));
         LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,dp(42),1); ap.leftMargin=dp(8);
         actionTop.addView(clear,ap); actions.addView(actionTop);
-        LinearLayout actionBottom=row(); LinearLayout.LayoutParams ebp=new LinearLayout.LayoutParams(dp(132),dp(42)); ebp.topMargin=dp(8);
-        actionBottom.addView(export,ebp); actions.addView(actionBottom);
+        LinearLayout actionBottom=row(); LinearLayout.LayoutParams ebp=new LinearLayout.LayoutParams(-1,dp(42)); ebp.topMargin=dp(8);
+        actionBottom.addView(export,new LinearLayout.LayoutParams(-1,dp(42))); actions.addView(actionBottom);
         operation.addView(actions);
         modeButton.setOnClickListener(v->toggleMode());
         clear.setOnClickListener(v->confirmClear());
@@ -222,18 +225,11 @@ public class MainActivity extends Activity {
         LinearLayout sh=row(); sh.addView(text("🔍 高级搜索筛选",15,INK,true),new LinearLayout.LayoutParams(0,-2,1));
         Button reset=button("重置搜索",Color.rgb(160,174,192),Color.rgb(130,145,165),30); sh.addView(reset); searchCard.addView(sh);
         reset.setOnClickListener(v->resetSearch());
-        HorizontalScrollView tabScroll=new HorizontalScrollView(this); tabScroll.setHorizontalScrollBarEnabled(false);
-        tabRow=row(); tabScroll.addView(tabRow); LinearLayout.LayoutParams tsp=new LinearLayout.LayoutParams(-1,dp(44)); tsp.topMargin=dp(8); searchCard.addView(tabScroll,tsp);
-        for(int i=0;i<SEARCH_TYPES.length;i++){ final int idx=i; Button tab=button(SEARCH_TYPES[i],i==0?PURPLE:Color.rgb(180,190,205),i==0?Color.rgb(118,75,162):Color.rgb(160,174,192),34); LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-2,dp(34)); tp.rightMargin=dp(6); tabRow.addView(tab,tp); tab.setOnClickListener(v->setSearchType(idx)); }
-        LinearLayout sr=column(); LinearLayout searchInputRow=row();
-        searchLabel=text("关键词：",13,INK,false); searchInputRow.addView(searchLabel);
-        searchInput=edit("输入关键词搜索（支持模糊匹配）",false); LinearLayout.LayoutParams sip=new LinearLayout.LayoutParams(0,dp(38),1); sip.leftMargin=dp(6); searchInputRow.addView(searchInput,sip);
-        sr.addView(searchInputRow);
-        Button search=button("搜索",PURPLE,Color.rgb(118,75,162),38); LinearLayout.LayoutParams sbp=new LinearLayout.LayoutParams(dp(92),dp(38)); sbp.topMargin=dp(7); sr.addView(search,sbp);
-        searchCard.addView(sr); search.setOnClickListener(v->{searchKeyword=searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);renderTable();});
+        tabRow=column(); LinearLayout.LayoutParams tsp=new LinearLayout.LayoutParams(-1,-2);tsp.topMargin=dp(10);searchCard.addView(tabRow,tsp);
+        for(int r=0;r<2;r++){LinearLayout line=row();LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(40));if(r>0)lp.topMargin=dp(6);tabRow.addView(line,lp);int start=r==0?0:3,end=r==0?3:5;for(int i=start;i<end;i++){final int idx=i;Button tab=button(SEARCH_TYPES[i],i==0?PURPLE:Color.rgb(180,190,205),i==0?Color.rgb(118,75,162):Color.rgb(160,174,192),34);LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,dp(36),1);if(i>start)tp.leftMargin=dp(6);line.addView(tab,tp);tab.setOnClickListener(v->setSearchType(idx));}}
+        LinearLayout sr=column();searchLabel=text("关键词",13,INK,true);sr.addView(searchLabel);searchInput=edit("输入关键词搜索（支持模糊匹配）",false);LinearLayout.LayoutParams sip=new LinearLayout.LayoutParams(-1,dp(42));sip.topMargin=dp(6);sr.addView(searchInput,sip);
+        LinearLayout searchActions=row();LinearLayout.LayoutParams sap=new LinearLayout.LayoutParams(-1,dp(40));sap.topMargin=dp(8);sr.addView(searchActions,sap);Button search=button("搜索",PURPLE,Color.rgb(118,75,162),38);Button advanced=button("高级筛选",Color.rgb(160,174,192),Color.rgb(130,145,165),38);searchActions.addView(search,new LinearLayout.LayoutParams(0,dp(38),1));LinearLayout.LayoutParams ap2=new LinearLayout.LayoutParams(0,dp(38),1);ap2.leftMargin=dp(8);searchActions.addView(advanced,ap2);searchCard.addView(sr);search.setOnClickListener(v->{searchKeyword=searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);renderTable();});
         searchInput.setOnEditorActionListener((v,id,event)->{searchKeyword=searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);renderTable();return false;});
-        Button advanced=button("高级筛选",Color.rgb(160,174,192),Color.rgb(130,145,165),34);
-        LinearLayout advButtonRow=row(); LinearLayout.LayoutParams abr=new LinearLayout.LayoutParams(-1,dp(38)); abr.topMargin=dp(6); advButtonRow.addView(advanced,new LinearLayout.LayoutParams(-2,dp(34))); searchCard.addView(advButtonRow);
         advancedArea=column(); advancedArea.setPadding(0,dp(10),0,0); searchCard.addView(advancedArea); advancedArea.setVisibility(View.GONE);
         LinearLayout fr=row(); filterTypeSpinner=spinner(new String[]{"全部类型","宿舍","新房宿舍","自有房","外租房"});
         filterRoomInput=edit("输入宿舍号模糊匹配",false); field(fr,"住宿类型筛选",filterTypeSpinner); field(fr,"宿舍号筛选",filterRoomInput); advancedArea.addView(fr);
@@ -247,8 +243,8 @@ public class MainActivity extends Activity {
 
         LinearLayout tableCard=card(0); LinearLayout.LayoutParams tcp=new LinearLayout.LayoutParams(-1,-2); tcp.topMargin=dp(14); content.addView(tableCard,tcp);
         HorizontalScrollView tableScroll=new HorizontalScrollView(this); tableScroll.setHorizontalScrollBarEnabled(true);
-        LinearLayout table=column(); table.setMinimumWidth(dp(790)); tableScroll.addView(table); tableCard.addView(tableScroll);
-        LinearLayout headerRow=row(); headerRow.setPadding(dp(8),dp(12),dp(8),dp(12)); headerRow.setBackgroundColor(Color.argb(185,255,255,255));
+        LinearLayout table=column();if(!compactScreen)table.setMinimumWidth(dp(790));tableScroll.setFillViewport(true);tableScroll.setHorizontalScrollBarEnabled(!compactScreen);tableScroll.addView(table);tableCard.addView(tableScroll);
+        LinearLayout headerRow=row(); headerRow.setPadding(dp(8),dp(12),dp(8),dp(12)); headerRow.setBackgroundColor(Color.argb(185,255,255,255));if(compactScreen)headerRow.setVisibility(View.GONE);
         String[] heads={"序号","住宿类型","宿舍号","人员姓名","联系电话","操作"}; int[] widths={48,95,85,125,130,145};
         for(int i=0;i<heads.length;i++){TextView h=text(heads[i],13,Color.rgb(26,32,44),true); headerRow.addView(h,new LinearLayout.LayoutParams(dp(widths[i]),-2));}
         table.addView(headerRow); tableRows=column(); table.addView(tableRows);
@@ -350,7 +346,7 @@ public class MainActivity extends Activity {
         String[] labels={"关键词：","姓名：","电话：","宿舍号：","住宿类型："};
         String[] hints={"输入关键词搜索（支持模糊匹配）","输入姓名模糊搜索","输入电话模糊搜索","输入宿舍号模糊搜索","输入住宿类型模糊搜索"};
         searchLabel.setText(labels[index]);searchInput.setHint(hints[index]);
-        for(int i=0;i<tabRow.getChildCount();i++){Button b=(Button)tabRow.getChildAt(i);b.setBackground(gradient(i==index?PURPLE:Color.rgb(180,190,205),i==index?Color.rgb(118,75,162):Color.rgb(160,174,192),8));}
+        for(int r=0;r<tabRow.getChildCount();r++){LinearLayout ln=(LinearLayout)tabRow.getChildAt(r);for(int c=0;c<ln.getChildCount();c++){int i=r==0?c:c+3;Button b=(Button)ln.getChildAt(c);b.setBackground(gradient(i==index?PURPLE:Color.rgb(180,190,205),i==index?Color.rgb(118,75,162):Color.rgb(160,174,192),8));}}
     }
     private void resetSearch(){
         searchKeyword="";searchType="all";filterType="";filterRoom="";searchInput.setText("");filterRoomInput.setText("");filterTypeSpinner.setSelection(0);setSearchType(0);advancedOpen=false;advancedArea.setVisibility(View.GONE);renderTable();
@@ -363,14 +359,14 @@ public class MainActivity extends Activity {
         int[] widths={48,95,85,125,130,145};
         for(int i=0;i<shown.length();i++){
             JSONObject o=shown.optJSONObject(i);if(o==null)continue;long id=o.optLong("id");String type=o.optString("stayType"),room=o.optString("roomNum");JSONArray persons=o.optJSONArray("personList");
-            LinearLayout line=row();line.setPadding(dp(8),dp(12),dp(8),dp(12));line.setBackground(shape(i%2==0?Color.argb(75,255,255,255):Color.argb(35,255,255,255),Color.argb(45,255,255,255),0));
-            addCell(line,String.valueOf(i+1),widths[0],false);addCell(line,type,widths[1],false);addCell(line,room,widths[2],type.equals("宿舍")&&persons!=null&&persons.length()>=2);
+            LinearLayout line=compactScreen?column():row();line.setPadding(dp(12),dp(12),dp(12),dp(12));line.setBackground(shape(i%2==0?Color.argb(195,255,255,255):Color.argb(155,255,255,255),Color.argb(70,102,126,234),12));if(compactScreen){LinearLayout top=row();top.addView(text("记录 "+(i+1),14,PURPLE,true),new LinearLayout.LayoutParams(0,-2,1));top.addView(text(type+(room.equals("-")?"":" · "+room),14,INK,true));line.addView(top);}
+            if(!compactScreen){addCell(line,String.valueOf(i+1),widths[0],false);addCell(line,type,widths[1],false);addCell(line,room,widths[2],type.equals("宿舍")&&persons!=null&&persons.length()>=2);}else{TextView rt=text("宿舍号："+(room.equals("-")?"无":room),12,type.equals("宿舍")&&persons!=null&&persons.length()>=2?RED:MUTED,true);rt.setPadding(0,dp(4),0,dp(4));line.addView(rt);}
             StringBuilder names=new StringBuilder(),phones=new StringBuilder();if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);if(j>0){names.append("\\n");phones.append("\\n");}names.append(p==null?"":p.optString("name"));phones.append(p==null?"-":p.optString("phone","-").isEmpty()?"-":p.optString("phone"));}
-            addCell(line,names.toString(),widths[3],false);addCell(line,phones.toString(),widths[4],false);
+            if(!compactScreen){addCell(line,names.toString(),widths[3],false);addCell(line,phones.toString(),widths[4],false);}else{TextView nt=text("人员："+names.toString().replace("\\n","、"),13,INK,false);line.addView(nt);TextView pt=text("电话："+phones.toString().replace("\\n","、"),13,MUTED,false);line.addView(pt);gap(line,8);}
             LinearLayout ops=row();Button edit=button("修改",PURPLE,Color.rgb(118,75,162),32);Button del=button("删除",RED,Color.rgb(197,48,48),32);
             ops.addView(edit,new LinearLayout.LayoutParams(dp(62),dp(32)));LinearLayout.LayoutParams dlp=new LinearLayout.LayoutParams(dp(62),dp(32));dlp.leftMargin=dp(5);ops.addView(del,dlp);
-            line.addView(ops,new LinearLayout.LayoutParams(dp(widths[5]),-2));edit.setOnClickListener(v->openEdit(id));del.setOnClickListener(v->deleteRecord(id));
-            line.setOnClickListener(v->openEdit(id));tableRows.addView(line);
+            if(compactScreen){LinearLayout.LayoutParams op=new LinearLayout.LayoutParams(-1,-2);op.topMargin=dp(8);line.addView(ops,op);}else line.addView(ops,new LinearLayout.LayoutParams(dp(widths[5]),-2));edit.setOnClickListener(v->openEdit(id));del.setOnClickListener(v->deleteRecord(id));
+            line.setOnClickListener(v->openEdit(id));LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,-2);if(compactScreen)rowp.bottomMargin=dp(8);tableRows.addView(line,rowp);
         }
     }
     private void addCell(LinearLayout parent,String value,int width,boolean red){TextView t=text(value,13,red?RED:INK,red);t.setGravity(Gravity.CENTER_VERTICAL);t.setPadding(dp(2),0,dp(2),0);parent.addView(t,new LinearLayout.LayoutParams(dp(width),-2));}
