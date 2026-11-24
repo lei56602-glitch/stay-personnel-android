@@ -1,16 +1,28 @@
 package com.leixiao.staypersonnel;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Base64;
+import android.text.InputType;
+import android.view.Gravity;
 import android.view.View;
-import android.webkit.JavascriptInterface;
-import android.webkit.WebChromeClient;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -18,159 +30,422 @@ import org.json.JSONObject;
 
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class MainActivity extends Activity {
     private static final int CREATE_XLSX = 4102;
-    private WebView webView;
-    private String pendingFileName;
-    private String pendingJson;
+    private static final int INK = Color.rgb(45,55,72);
+    private static final int MUTED = Color.rgb(74,85,104);
+    private static final int PURPLE = Color.rgb(102,126,234);
+    private static final int GREEN = Color.rgb(72,187,120);
+    private static final int RED = Color.rgb(229,62,62);
+    private static final String[] TYPES = {"宿舍","新房宿舍","自有房","外租房"};
+    private static final String[] SEARCH_TYPES = {"综合搜索","按姓名","按电话","按宿舍号","按住宿类型"};
+    private JSONArray data = new JSONArray();
+    private boolean multiMode = false;
+    private String searchType = "all";
+    private String searchKeyword = "";
+    private String filterType = "";
+    private String filterRoom = "";
+    private boolean advancedOpen = false;
+    private EditText recognizeInput, roomInput, nameInput, phoneInput, searchInput, filterRoomInput;
+    private Spinner typeSpinner, filterTypeSpinner;
+    private LinearLayout singleArea, multiArea, multiRows, tableRows, statsArea, advancedArea, tabRow;
+    private TextView searchLabel, totalCount, totalPeople, matchCount;
+    private Button modeButton;
+    private final ArrayList<PersonRow> addRows = new ArrayList<>();
+    private AlertDialog editDialog;
+    private String pendingExportName;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-        webView = new WebView(this);
-        setContentView(webView);
-
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-        settings.setSupportZoom(false);
-        webView.setWebViewClient(new WebViewClient());
-        webView.setWebChromeClient(new WebChromeClient());
-        webView.addJavascriptInterface(new AndroidBridge(), "AndroidBridge");
-        webView.loadUrl("file:///android_asset/index.html");
+    private static class PersonRow {
+        EditText name, phone;
+        LinearLayout container;
+        PersonRow(EditText n, EditText p, LinearLayout c) { name=n; phone=p; container=c; }
     }
 
-    private class AndroidBridge {
-        @JavascriptInterface
-        public void saveExcel(String fileName, String json) {
-            runOnUiThread(() -> {
-                pendingFileName = safeFileName(fileName);
-                pendingJson = json;
-                Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-                intent.putExtra(Intent.EXTRA_TITLE, pendingFileName);
-                startActivityForResult(intent, CREATE_XLSX);
-            });
+    @Override public void onCreate(Bundle state) {
+        super.onCreate(state);
+        getWindow().setStatusBarColor(Color.rgb(224,247,250));
+        getWindow().setNavigationBarColor(Color.rgb(243,229,245));
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        loadData();
+        buildScreen();
+        renderTable();
+    }
+
+    private int dp(float v) { return (int)(v * getResources().getDisplayMetrics().density + 0.5f); }
+    private GradientDrawable shape(int color, int stroke, int radius) {
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(color); d.setCornerRadius(dp(radius));
+        if (stroke != 0) d.setStroke(dp(1), stroke);
+        return d;
+    }
+    private GradientDrawable gradient(int a, int b, int radius) {
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{a,b});
+        d.setCornerRadius(dp(radius)); return d;
+    }
+    private LinearLayout column() {
+        LinearLayout l = new LinearLayout(this); l.setOrientation(LinearLayout.VERTICAL); return l;
+    }
+    private LinearLayout row() {
+        LinearLayout l = new LinearLayout(this); l.setOrientation(LinearLayout.HORIZONTAL); l.setGravity(Gravity.CENTER_VERTICAL); return l;
+    }
+    private LinearLayout card(int padding) {
+        LinearLayout l = column();
+        l.setPadding(dp(padding),dp(padding),dp(padding),dp(padding));
+        l.setBackground(shape(Color.argb(205,255,255,255),Color.argb(220,255,255,255),16));
+        l.setElevation(dp(5)); return l;
+    }
+    private void gap(LinearLayout parent, int height) {
+        View v = new View(this); parent.addView(v,new LinearLayout.LayoutParams(1,dp(height)));
+    }
+    private TextView text(String value, int size, int color, boolean bold) {
+        TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(color);
+        if (bold) t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        return t;
+    }
+    private EditText edit(String hint, boolean phone) {
+        EditText e = new EditText(this); e.setSingleLine(true); e.setTextSize(14); e.setTextColor(INK);
+        e.setHintTextColor(Color.rgb(145,155,170)); e.setHint(hint);
+        e.setPadding(dp(12),0,dp(12),0); e.setMinHeight(dp(42));
+        e.setBackground(shape(Color.argb(130,255,255,255),Color.argb(180,255,255,255),8));
+        if (phone) e.setInputType(InputType.TYPE_CLASS_PHONE);
+        else e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        return e;
+    }
+    private Button button(String label, int c1, int c2, int height) {
+        Button b = new Button(this); b.setText(label); b.setTextSize(height<=32?12:14);
+        b.setTextColor(Color.WHITE); b.setAllCaps(false); b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        b.setPadding(dp(12),0,dp(12),0); b.setMinHeight(dp(height)); b.setMinimumHeight(dp(height));
+        b.setBackground(gradient(c1,c2,8)); b.setElevation(dp(2));
+        return b;
+    }
+    private Spinner spinner(String[] values) {
+        Spinner s = new Spinner(this);
+        ArrayAdapter<String> a = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,values);
+        a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item); s.setAdapter(a);
+        s.setBackground(shape(Color.argb(130,255,255,255),Color.argb(180,255,255,255),8));
+        return s;
+    }
+    private void field(LinearLayout parent, String label, View input) {
+        LinearLayout wrap=column();
+        TextView t=text(label,14,INK,true); wrap.addView(t);
+        LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(-1,dp(42)); ip.topMargin=dp(6);
+        wrap.addView(input,ip);
+        LinearLayout.LayoutParams wp=new LinearLayout.LayoutParams(0,-2,1); wp.rightMargin=dp(7);
+        parent.addView(wrap,wp);
+    }
+    private void buildScreen() {
+        FrameLayout frame=new FrameLayout(this);
+        GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+            new int[]{Color.rgb(224,247,250),Color.rgb(232,245,233),Color.rgb(243,229,245)});
+        frame.setBackground(bg);
+        ScrollView scroll=new ScrollView(this); scroll.setFillViewport(false);
+        LinearLayout content=column(); content.setPadding(dp(10),dp(10),dp(10),dp(96));
+        scroll.addView(content); frame.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout header=card(20); header.setGravity(Gravity.CENTER);
+        TextView title=text("住宿人员名单统计系统",24,INK,true); title.setGravity(Gravity.CENTER);
+        TextView subtitle=text("全离线数据存储 | 智能识别快速录入 | 同宿舍自动合并 | 一键导出Excel",12,MUTED,false);
+        subtitle.setGravity(Gravity.CENTER); subtitle.setPadding(0,dp(8),0,0);
+        header.addView(title); header.addView(subtitle);
+        content.addView(header,new LinearLayout.LayoutParams(-1,-2));
+        gap(content,14);
+
+        LinearLayout operation=card(14); content.addView(operation,new LinearLayout.LayoutParams(-1,-2));
+        LinearLayout ai=column(); ai.setPadding(dp(12),dp(12),dp(12),dp(12));
+        ai.setBackground(shape(Color.argb(22,102,126,234),Color.argb(130,102,126,234),12));
+        LinearLayout aiHead=row(); TextView aiTitle=text("📋 智能识别快速录入",15,Color.rgb(76,81,191),true);
+        aiHead.addView(aiTitle,new LinearLayout.LayoutParams(0,-2,1));
+        Button recognize=button("一键识别填充",PURPLE,Color.rgb(118,75,162),30); aiHead.addView(recognize);
+        ai.addView(aiHead);
+        TextView tip=text("支持粘贴任意格式的「姓名+电话+宿舍号」文本，自动拆分填充（例：张三 13800001111 101）",12,MUTED,false);
+        tip.setPadding(0,dp(8),0,dp(8)); ai.addView(tip);
+        recognizeInput=new EditText(this); recognizeInput.setTextSize(14); recognizeInput.setGravity(Gravity.TOP);
+        recognizeInput.setHint("请粘贴包含姓名、电话、宿舍号的文本，粘贴后自动识别...");
+        recognizeInput.setMinLines(3); recognizeInput.setPadding(dp(12),dp(10),dp(12),dp(10));
+        recognizeInput.setBackground(shape(Color.argb(120,255,255,255),Color.argb(180,255,255,255),8));
+        ai.addView(recognizeInput,new LinearLayout.LayoutParams(-1,dp(82)));
+        recognize.setOnClickListener(v->autoRecognize());
+        operation.addView(ai); gap(operation,16);
+
+        LinearLayout base=row(); typeSpinner=spinner(TYPES); roomInput=edit("请输入宿舍号",false);
+        field(base,"住宿类型",typeSpinner); field(base,"宿舍号",roomInput);
+        operation.addView(base); gap(operation,14);
+        typeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
+            public void onItemSelected(android.widget.AdapterView<?> p,View v,int pos,long id){updateRoomVisibility();}
+            public void onNothingSelected(android.widget.AdapterView<?> p){}
+        });
+
+        singleArea=row(); nameInput=edit("请输入姓名",false); phoneInput=edit("请输入联系电话",true);
+        field(singleArea,"人员姓名",nameInput); field(singleArea,"联系电话",phoneInput);
+        operation.addView(singleArea); gap(operation,12);
+
+        multiArea=column(); multiArea.setPadding(dp(12),dp(12),dp(12),dp(12));
+        multiArea.setBackground(shape(Color.argb(100,255,255,255),Color.argb(160,255,255,255),12));
+        LinearLayout mh=row(); mh.addView(text("同宿舍人员批量录入（姓名与电话一一对应）",14,INK,true),new LinearLayout.LayoutParams(0,-2,1));
+        Button add=button("+ 新增人员",PURPLE,Color.rgb(118,75,162),30); mh.addView(add); multiArea.addView(mh);
+        multiRows=column(); LinearLayout.LayoutParams mrp=new LinearLayout.LayoutParams(-1,-2); mrp.topMargin=dp(10); multiArea.addView(multiRows,mrp);
+        add.setOnClickListener(v->addPersonRow(multiRows,addRows));
+        operation.addView(multiArea); multiArea.setVisibility(View.GONE); gap(operation,12);
+
+        LinearLayout actions=row();
+        modeButton=button("切换批量录入模式",Color.rgb(160,174,192),Color.rgb(130,145,165),42);
+        Button clear=button("一键清空所有数据",Color.rgb(237,137,54),Color.rgb(221,107,32),42);
+        Button export=button("导出Excel",GREEN,Color.rgb(56,161,105),42);
+        actions.addView(modeButton,new LinearLayout.LayoutParams(0,dp(42),1));
+        LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,dp(42),1); ap.leftMargin=dp(6);
+        actions.addView(clear,ap); LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(0,dp(42),1); ep.leftMargin=dp(6); actions.addView(export,ep);
+        operation.addView(actions);
+        modeButton.setOnClickListener(v->toggleMode());
+        clear.setOnClickListener(v->confirmClear());
+        export.setOnClickListener(v->exportExcel());
+
+        gap(operation,18);
+        LinearLayout searchCard=column(); searchCard.setPadding(dp(12),dp(12),dp(12),dp(10));
+        searchCard.setBackground(shape(Color.argb(100,255,255,255),Color.argb(160,255,255,255),12));
+        LinearLayout sh=row(); sh.addView(text("🔍 高级搜索筛选",15,INK,true),new LinearLayout.LayoutParams(0,-2,1));
+        Button reset=button("重置搜索",Color.rgb(160,174,192),Color.rgb(130,145,165),30); sh.addView(reset); searchCard.addView(sh);
+        reset.setOnClickListener(v->resetSearch());
+        HorizontalScrollView tabScroll=new HorizontalScrollView(this); tabScroll.setHorizontalScrollBarEnabled(false);
+        tabRow=row(); tabScroll.addView(tabRow); LinearLayout.LayoutParams tsp=new LinearLayout.LayoutParams(-1,dp(44)); tsp.topMargin=dp(8); searchCard.addView(tabScroll,tsp);
+        for(int i=0;i<SEARCH_TYPES.length;i++){ final int idx=i; Button tab=button(SEARCH_TYPES[i],i==0?PURPLE:Color.rgb(180,190,205),i==0?Color.rgb(118,75,162):Color.rgb(160,174,192),34); LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-2,dp(34)); tp.rightMargin=dp(6); tabRow.addView(tab,tp); tab.setOnClickListener(v->setSearchType(idx)); }
+        LinearLayout sr=row(); searchLabel=text("关键词：",13,INK,false); sr.addView(searchLabel);
+        searchInput=edit("输入关键词搜索（支持模糊匹配）",false); sr.addView(searchInput,new LinearLayout.LayoutParams(0,dp(38),1));
+        Button search=button("搜索",PURPLE,Color.rgb(118,75,162),38); LinearLayout.LayoutParams sbp=new LinearLayout.LayoutParams(-2,dp(38)); sbp.leftMargin=dp(6); sr.addView(search,sbp);
+        searchCard.addView(sr); search.setOnClickListener(v->{searchKeyword=searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);renderTable();});
+        searchInput.setOnEditorActionListener((v,id,event)->{searchKeyword=searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);renderTable();return false;});
+        Button advanced=button("高级筛选",Color.rgb(160,174,192),Color.rgb(130,145,165),34);
+        LinearLayout advButtonRow=row(); LinearLayout.LayoutParams abr=new LinearLayout.LayoutParams(-1,dp(38)); abr.topMargin=dp(6); advButtonRow.addView(advanced,new LinearLayout.LayoutParams(-2,dp(34))); searchCard.addView(advButtonRow);
+        advancedArea=column(); advancedArea.setPadding(0,dp(10),0,0); searchCard.addView(advancedArea); advancedArea.setVisibility(View.GONE);
+        LinearLayout fr=row(); filterTypeSpinner=spinner(new String[]{"全部类型","宿舍","新房宿舍","自有房","外租房"});
+        filterRoomInput=edit("输入宿舍号模糊匹配",false); field(fr,"住宿类型筛选",filterTypeSpinner); field(fr,"宿舍号筛选",filterRoomInput); advancedArea.addView(fr);
+        filterTypeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?>p,View v,int pos,long id){filterType=pos==0?"":TYPES[pos-1];renderTable();}public void onNothingSelected(android.widget.AdapterView<?>p){}});
+        filterRoomInput.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){filterRoom=s.toString().trim().toLowerCase(Locale.ROOT);renderTable();}public void afterTextChanged(android.text.Editable e){}});
+        advanced.setOnClickListener(v->{advancedOpen=!advancedOpen;advancedArea.setVisibility(advancedOpen?View.VISIBLE:View.GONE);});
+        statsArea=row(); statsArea.setPadding(0,dp(12),0,dp(2));
+        totalCount=text("总记录数：0 条",13,INK,false); totalPeople=text("总人数：0 人",13,INK,false); matchCount=text("搜索匹配：0 条",13,INK,false);
+        statsArea.addView(totalCount,new LinearLayout.LayoutParams(0,-2,1)); statsArea.addView(totalPeople,new LinearLayout.LayoutParams(0,-2,1)); statsArea.addView(matchCount,new LinearLayout.LayoutParams(0,-2,1));
+        searchCard.addView(statsArea); operation.addView(searchCard);
+
+        LinearLayout tableCard=card(0); LinearLayout.LayoutParams tcp=new LinearLayout.LayoutParams(-1,-2); tcp.topMargin=dp(14); content.addView(tableCard,tcp);
+        HorizontalScrollView tableScroll=new HorizontalScrollView(this); tableScroll.setHorizontalScrollBarEnabled(true);
+        LinearLayout table=column(); table.setMinimumWidth(dp(790)); tableScroll.addView(table); tableCard.addView(tableScroll);
+        LinearLayout headerRow=row(); headerRow.setPadding(dp(8),dp(12),dp(8),dp(12)); headerRow.setBackgroundColor(Color.argb(185,255,255,255));
+        String[] heads={"序号","住宿类型","宿舍号","人员姓名","联系电话","操作"}; int[] widths={48,95,85,125,130,145};
+        for(int i=0;i<heads.length;i++){TextView h=text(heads[i],13,Color.rgb(26,32,44),true); headerRow.addView(h,new LinearLayout.LayoutParams(dp(widths[i]),-2));}
+        table.addView(headerRow); tableRows=column(); table.addView(tableRows);
+        content.addView(new View(this),new LinearLayout.LayoutParams(1,dp(18)));
+
+        LinearLayout floating=card(8); floating.setOrientation(LinearLayout.HORIZONTAL); floating.setGravity(Gravity.CENTER);
+        Button submit=button("添加记录",PURPLE,Color.rgb(118,75,162),48); floating.addView(submit,new LinearLayout.LayoutParams(-1,dp(48)));
+        FrameLayout.LayoutParams fp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM); fp.setMargins(dp(12),0,dp(12),dp(12)); frame.addView(floating,fp);
+        submit.setOnClickListener(v->addRecord());
+        setContentView(frame);
+        updateRoomVisibility();
+    }
+
+    private void updateRoomVisibility(){
+        if(roomInput==null)return;
+        int p=typeSpinner.getSelectedItemPosition();
+        boolean show=p==0||p==1;
+        roomInput.setVisibility(show?View.VISIBLE:View.GONE);
+        if(!show)roomInput.setText("");
+    }
+    private void toggleMode(){
+        multiMode=!multiMode; singleArea.setVisibility(multiMode?View.GONE:View.VISIBLE);
+        multiArea.setVisibility(multiMode?View.VISIBLE:View.GONE);
+        modeButton.setText(multiMode?"切换单人录入模式":"切换批量录入模式");
+        if(multiMode&&addRows.isEmpty())addPersonRow(multiRows,addRows);
+        if(!multiMode){multiRows.removeAllViews();addRows.clear();}
+        nameInput.setText("");phoneInput.setText("");
+    }
+    private void addPersonRow(LinearLayout parent,ArrayList<PersonRow> list){
+        LinearLayout line=row(); line.setPadding(0,dp(5),0,dp(5));
+        LinearLayout fields=column(); EditText n=edit("请输入姓名",false),p=edit("请输入联系电话",true);
+        fields.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));
+        LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(40));pp.topMargin=dp(5);fields.addView(p,pp);
+        line.addView(fields,new LinearLayout.LayoutParams(0,-2,1));
+        Button del=button("删除",RED,Color.rgb(197,48,48),34);LinearLayout.LayoutParams dp1=new LinearLayout.LayoutParams(dp(64),dp(34));dp1.leftMargin=dp(8);line.addView(del,dp1);
+        PersonRow pr=new PersonRow(n,p,line);list.add(pr);parent.addView(line);
+        del.setOnClickListener(v->{if(list.size()<=1){toast("至少保留1位人员信息");return;}list.remove(pr);parent.removeView(line);});
+    }
+    private void autoRecognize(){
+        String original=recognizeInput.getText().toString().trim();if(original.isEmpty())return;
+        String work=original,person="",phone="",room="";
+        Matcher pm=Pattern.compile("(?:^|[^\\\\d])(1[3-9]\\\\d{9})(?:$|[^\\\\d])").matcher(work);
+        if(pm.find()){phone=pm.group(1);work=pm.replaceFirst(" ");}
+        Matcher rm=Pattern.compile("(?:\\\\d+[栋号楼单元层室房宿舍\\\\-])*\\\\d{3,4}[A-Za-z]?").matcher(work);
+        if(rm.find()){room=rm.group().replaceAll("[^\\\\dA-Za-z栋号楼单元层室房宿舍\\\\-]","").trim();work=work.replace(room," ");}
+        else {Matcher pure=Pattern.compile("(?:^|[^\\\\d])(\\\\d{3,4}[A-Za-z]?)(?:$|[^\\\\d])").matcher(work);if(pure.find()){room=pure.group(1);work=pure.replaceFirst(" ");}}
+        work=work.replaceAll("姓名|名字|电话|手机|手机号|宿舍|宿舍号|房号|房间号|住宿|类型|：|:|;|；|,|，|、|\\\\.|。|\\\\?|？|!|！|\\\\s","");
+        Matcher nm=Pattern.compile("[\\\\u4e00-\\\\u9fa5]{2,4}").matcher(work);if(nm.find())person=nm.group();else person=work;
+        if(!person.isEmpty())nameInput.setText(person);if(!phone.isEmpty())phoneInput.setText(phone);
+        if(!room.isEmpty()){roomInput.setText(room);typeSpinner.setSelection(0);updateRoomVisibility();}
+    }
+    private JSONArray collectRows(ArrayList<PersonRow> rows){
+        JSONArray a=new JSONArray();for(PersonRow r:rows){String n=r.name.getText().toString().trim(),p=r.phone.getText().toString().trim();if(!n.isEmpty()){JSONObject o=new JSONObject();try{o.put("name",n);o.put("phone",p);}catch(Exception ignored){}a.put(o);}}return a;
+    }
+    private void addRecord(){
+        String type=TYPES[typeSpinner.getSelectedItemPosition()],room=roomInput.getText().toString().trim();
+        if((type.equals("宿舍")||type.equals("新房宿舍"))&&room.isEmpty()){toast("请输入宿舍号");return;}
+        JSONArray people=new JSONArray();
+        if(multiMode)people=collectRows(addRows);else{
+            String n=nameInput.getText().toString().trim(),p=phoneInput.getText().toString().trim();
+            if(n.isEmpty()){toast("请输入人员姓名");return;}JSONObject o=new JSONObject();try{o.put("name",n);o.put("phone",p);}catch(Exception ignored){}people.put(o);
         }
+        if(people.length()==0){toast("请至少填写1位人员姓名");return;}
+        if(type.equals("宿舍")){
+            JSONObject existing=findDorm(room);
+            if(existing!=null){JSONArray old=existing.optJSONArray("personList");int count=0;
+                for(int i=0;i<people.length();i++){JSONObject person=people.optJSONObject(i);if(!containsName(old,person.optString("name"))){old.put(person);count++;}}
+                toast(count>0?"已自动将"+count+"人合并到【宿舍-"+room+"】":"该宿舍已存在这些人员，无需重复添加");
+            }else{data=prepend(record(type,room,people));toast("记录添加成功");}
+        }else{data=prepend(record(type,room.isEmpty()?"-":room,people));toast("记录添加成功");}
+        nameInput.setText("");phoneInput.setText("");roomInput.setText("");recognizeInput.setText("");
+        if(multiMode){multiRows.removeAllViews();addRows.clear();addPersonRow(multiRows,addRows);}
+        saveData();renderTable();
     }
-
-    private String safeFileName(String name) {
-        if (name == null || name.trim().isEmpty()) return "住宿人员名单统计.xlsx";
-        String clean = name.replaceAll("[\\\\/:*?\"<>|]", "_");
-        return clean.toLowerCase().endsWith(".xlsx") ? clean : clean + ".xlsx";
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != CREATE_XLSX) return;
-        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
-            Toast.makeText(this, "已取消保存", Toast.LENGTH_SHORT).show();
-            pendingJson = null;
-            return;
-        }
-        Uri uri = data.getData();
-        try (OutputStream out = getContentResolver().openOutputStream(uri)) {
-            if (out == null) throw new IllegalStateException("无法打开保存位置");
-            writeWorkbook(out, new JSONArray(pendingJson));
-            Toast.makeText(this, "Excel 文件已保存", Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            Toast.makeText(this, "Excel 保存失败：" + e.getMessage(), Toast.LENGTH_LONG).show();
-        } finally {
-            pendingJson = null;
-        }
-    }
-
-    private void writeWorkbook(OutputStream output, JSONArray rows) throws Exception {
-        try (ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
-            add(zip, "[Content_Types].xml",
-                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-                "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
-                "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>" +
-                "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
-                "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
-                "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
-                "</Types>");
-            add(zip, "_rels/.rels",
-                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-                "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
-                "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
-                "</Relationships>");
-            add(zip, "xl/workbook.xml",
-                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-                "<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
-                "<sheets><sheet name=\"住宿人员名单\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>");
-            add(zip, "xl/_rels/workbook.xml.rels",
-                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-                "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
-                "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
-                "</Relationships>");
-            StringBuilder sheet = new StringBuilder();
-            sheet.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>")
-                 .append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">")
-                 .append("<cols><col min=\"1\" max=\"1\" width=\"8\" customWidth=\"1\"/>")
-                 .append("<col min=\"2\" max=\"2\" width=\"14\" customWidth=\"1\"/>")
-                 .append("<col min=\"3\" max=\"3\" width=\"12\" customWidth=\"1\"/>")
-                 .append("<col min=\"4\" max=\"4\" width=\"16\" customWidth=\"1\"/>")
-                 .append("<col min=\"5\" max=\"5\" width=\"20\" customWidth=\"1\"/></cols><sheetData>");
-            for (int r = 0; r < rows.length(); r++) {
-                JSONArray row = rows.getJSONArray(r);
-                sheet.append("<row r=\"").append(r + 1).append("\">");
-                for (int c = 0; c < row.length(); c++) {
-                    String ref = columnName(c + 1) + (r + 1);
-                    Object value = row.opt(c);
-                    sheet.append("<c r=\"").append(ref).append("\" t=\"inlineStr\"><is><t xml:space=\"preserve\">")
-                         .append(xmlEscape(value == null ? "" : String.valueOf(value)))
-                         .append("</t></is></c>");
-                }
-                sheet.append("</row>");
+    private JSONObject record(String type,String room,JSONArray people){JSONObject o=new JSONObject();try{o.put("id",System.currentTimeMillis());o.put("stayType",type);o.put("roomNum",room);o.put("personList",people);}catch(Exception ignored){}return o;}
+    private JSONArray prepend(JSONObject o){JSONArray n=new JSONArray();n.put(o);for(int i=0;i<data.length();i++)n.put(data.optJSONObject(i));return n;}
+    private JSONObject findDorm(String room){for(int i=0;i<data.length();i++){JSONObject o=data.optJSONObject(i);if(o!=null&&o.optString("stayType").equals("宿舍")&&o.optString("roomNum").equals(room))return o;}return null;}
+    private boolean containsName(JSONArray a,String name){if(a==null)return false;for(int i=0;i<a.length();i++)if(a.optJSONObject(i)!=null&&a.optJSONObject(i).optString("name").equals(name))return true;return false;}
+    private JSONArray filtered(){
+        JSONArray out=new JSONArray();
+        for(int i=0;i<data.length();i++){
+            JSONObject o=data.optJSONObject(i);if(o==null)continue;
+            String type=o.optString("stayType"),room=o.optString("roomNum");
+            if(!filterType.isEmpty()&&!type.equals(filterType))continue;
+            if(!filterRoom.isEmpty()&&!room.toLowerCase(Locale.ROOT).contains(filterRoom))continue;
+            JSONArray persons=o.optJSONArray("personList");boolean match=searchKeyword.isEmpty();
+            if(!match){String k=searchKeyword;
+                if(searchType.equals("all")){match=room.toLowerCase(Locale.ROOT).contains(k)||type.toLowerCase(Locale.ROOT).contains(k)||personMatches(persons,k,"both");}
+                else if(searchType.equals("name"))match=personMatches(persons,k,"name");
+                else if(searchType.equals("phone"))match=personMatches(persons,k,"phone");
+                else if(searchType.equals("room"))match=room.toLowerCase(Locale.ROOT).contains(k);
+                else if(searchType.equals("type"))match=type.toLowerCase(Locale.ROOT).contains(k);
             }
-            sheet.append("</sheetData></worksheet>");
-            add(zip, "xl/worksheets/sheet1.xml", sheet.toString());
-            zip.finish();
+            if(match)out.put(o);
+        }return out;
+    }
+    private boolean personMatches(JSONArray a,String k,String field){if(a==null)return false;for(int i=0;i<a.length();i++){JSONObject p=a.optJSONObject(i);if(p==null)continue;if((field.equals("both")||field.equals("name"))&&p.optString("name").toLowerCase(Locale.ROOT).contains(k))return true;if((field.equals("both")||field.equals("phone"))&&p.optString("phone").toLowerCase(Locale.ROOT).contains(k))return true;}return false;}
+    private void setSearchType(int index){
+        String[] keys={"all","name","phone","room","type"};searchType=keys[index];
+        String[] labels={"关键词：","姓名：","电话：","宿舍号：","住宿类型："};
+        String[] hints={"输入关键词搜索（支持模糊匹配）","输入姓名模糊搜索","输入电话模糊搜索","输入宿舍号模糊搜索","输入住宿类型模糊搜索"};
+        searchLabel.setText(labels[index]);searchInput.setHint(hints[index]);
+        for(int i=0;i<tabRow.getChildCount();i++){Button b=(Button)tabRow.getChildAt(i);b.setBackground(gradient(i==index?PURPLE:Color.rgb(180,190,205),i==index?Color.rgb(118,75,162):Color.rgb(160,174,192),8));}
+    }
+    private void resetSearch(){
+        searchKeyword="";searchType="all";filterType="";filterRoom="";searchInput.setText("");filterRoomInput.setText("");filterTypeSpinner.setSelection(0);setSearchType(0);advancedOpen=false;advancedArea.setVisibility(View.GONE);renderTable();
+    }
+    private void renderTable(){
+        if(tableRows==null)return;tableRows.removeAllViews();JSONArray shown=filtered();
+        int people=0;for(int i=0;i<data.length();i++){JSONObject o=data.optJSONObject(i);if(o!=null&&o.optJSONArray("personList")!=null)people+=o.optJSONArray("personList").length();}
+        totalCount.setText("总记录数："+data.length()+" 条");totalPeople.setText("总人数："+people+" 人");matchCount.setText("搜索匹配："+shown.length()+" 条");
+        if(shown.length()==0){TextView empty=text("暂无匹配数据",14,MUTED,false);empty.setGravity(Gravity.CENTER);empty.setPadding(0,dp(36),0,dp(36));tableRows.addView(empty);return;}
+        int[] widths={48,95,85,125,130,145};
+        for(int i=0;i<shown.length();i++){
+            JSONObject o=shown.optJSONObject(i);if(o==null)continue;long id=o.optLong("id");String type=o.optString("stayType"),room=o.optString("roomNum");JSONArray persons=o.optJSONArray("personList");
+            LinearLayout line=row();line.setPadding(dp(8),dp(12),dp(8),dp(12));line.setBackground(shape(i%2==0?Color.argb(75,255,255,255):Color.argb(35,255,255,255),Color.argb(45,255,255,255),0));
+            addCell(line,String.valueOf(i+1),widths[0],false);addCell(line,type,widths[1],false);addCell(line,room,widths[2],type.equals("宿舍")&&persons!=null&&persons.length()>=2);
+            StringBuilder names=new StringBuilder(),phones=new StringBuilder();if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);if(j>0){names.append("\\n");phones.append("\\n");}names.append(p==null?"":p.optString("name"));phones.append(p==null?"-":p.optString("phone","-").isEmpty()?"-":p.optString("phone"));}
+            addCell(line,names.toString(),widths[3],false);addCell(line,phones.toString(),widths[4],false);
+            LinearLayout ops=row();Button edit=button("修改",PURPLE,Color.rgb(118,75,162),32);Button del=button("删除",RED,Color.rgb(197,48,48),32);
+            ops.addView(edit,new LinearLayout.LayoutParams(dp(62),dp(32)));LinearLayout.LayoutParams dlp=new LinearLayout.LayoutParams(dp(62),dp(32));dlp.leftMargin=dp(5);ops.addView(del,dlp);
+            line.addView(ops,new LinearLayout.LayoutParams(dp(widths[5]),-2));edit.setOnClickListener(v->openEdit(id));del.setOnClickListener(v->deleteRecord(id));
+            line.setOnClickListener(v->openEdit(id));tableRows.addView(line);
         }
     }
+    private void addCell(LinearLayout parent,String value,int width,boolean red){TextView t=text(value,13,red?RED:INK,red);t.setGravity(Gravity.CENTER_VERTICAL);t.setPadding(dp(2),0,dp(2),0);parent.addView(t,new LinearLayout.LayoutParams(dp(width),-2));}
 
-    private String columnName(int number) {
-        StringBuilder name = new StringBuilder();
-        while (number > 0) {
-            int rem = (number - 1) % 26;
-            name.insert(0, (char) ('A' + rem));
-            number = (number - 1) / 26;
+    private void openEdit(long id){
+        JSONObject rec=findById(id);if(rec==null)return;
+        LinearLayout body=column();body.setPadding(dp(18),dp(12),dp(18),dp(8));
+        Spinner st=spinner(TYPES);st.setSelection(typeIndex(rec.optString("stayType")));
+        EditText room=edit("请输入宿舍号",false);room.setText(rec.optString("roomNum").equals("-")?"":rec.optString("roomNum"));
+        field(body,"住宿类型",st);gap(body,10);field(body,"宿舍号",room);gap(body,10);
+        LinearLayout peopleBox=column();ArrayList<PersonRow> rows=new ArrayList<>();
+        JSONArray old=rec.optJSONArray("personList");boolean many=rec.optString("stayType").equals("宿舍")&&old!=null&&old.length()>=2;
+        EditText oneName=null,onePhone=null;
+        if(many){
+            LinearLayout head=row();head.addView(text("同宿舍人员编辑（姓名与电话一一对应）",14,INK,true),new LinearLayout.LayoutParams(0,-2,1));
+            Button add=button("+ 新增人员",PURPLE,Color.rgb(118,75,162),30);head.addView(add);peopleBox.addView(head);
+            LinearLayout list=column();peopleBox.addView(list);
+            if(old!=null)for(int i=0;i<old.length();i++){JSONObject p=old.optJSONObject(i);addDialogPerson(list,rows,p==null?"":p.optString("name"),p==null?"":p.optString("phone"));}
+            add.setOnClickListener(v->addDialogPerson(list,rows,"",""));
+        }else{
+            JSONObject p=old==null?new JSONObject():old.optJSONObject(0);oneName=edit("请输入姓名",false);onePhone=edit("请输入联系电话",true);
+            if(p!=null){oneName.setText(p.optString("name"));onePhone.setText(p.optString("phone"));}
+            field(peopleBox,"人员姓名",oneName);gap(peopleBox,8);field(peopleBox,"联系电话",onePhone);
         }
-        return name.toString();
+        body.addView(peopleBox);
+        ScrollView scroll=new ScrollView(this);scroll.addView(body);
+        AlertDialog dlg=new AlertDialog.Builder(this).setTitle("编辑住宿记录").setView(scroll)
+            .setNegativeButton("取消",null).setPositiveButton("保存修改",null).create();
+        dlg.setOnShowListener(v->{dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(b->{
+            String type=TYPES[st.getSelectedItemPosition()],rn=room.getText().toString().trim();
+            if((type.equals("宿舍")||type.equals("新房宿舍"))&&rn.isEmpty()){toast("请输入宿舍号");return;}
+            JSONArray plist=new JSONArray();
+            if(many){plist=collectRows(rows);if(plist.length()==0){toast("请至少填写1位人员姓名");return;}}
+            else{String n=oneName.getText().toString().trim(),ph=onePhone.getText().toString().trim();if(n.isEmpty()){toast("请输入人员姓名");return;}JSONObject p=new JSONObject();try{p.put("name",n);p.put("phone",ph);}catch(Exception ignored){}plist.put(p);}
+            removeById(id);
+            if(type.equals("宿舍")){JSONObject exist=findDorm(rn);if(exist!=null){JSONArray oldPeople=exist.optJSONArray("personList");for(int i=0;i<plist.length();i++){JSONObject p=plist.optJSONObject(i);if(!containsName(oldPeople,p.optString("name")))oldPeople.put(p);}toast("已保存修改，并自动合并到【宿舍-"+rn+"】");}else{data=prepend(record(type,rn,plist));toast("修改已保存");}}
+            else{data=prepend(record(type,rn.isEmpty()?"-":rn,plist));toast("修改已保存");}
+            saveData();renderTable();dlg.dismiss();
+        });});
+        dlg.show();dlg.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);editDialog=dlg;
     }
-
-    private String xmlEscape(String value) {
-        return value.replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;");
+    private void addDialogPerson(LinearLayout parent,ArrayList<PersonRow> rows,String name,String phone){
+        LinearLayout line=row();LinearLayout fields=column();EditText n=edit("请输入姓名",false),p=edit("请输入联系电话",true);n.setText(name);p.setText(phone);
+        fields.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(40));pp.topMargin=dp(5);fields.addView(p,pp);
+        line.addView(fields,new LinearLayout.LayoutParams(0,-2,1));Button del=button("删除",RED,Color.rgb(197,48,48),32);LinearLayout.LayoutParams dp=new LinearLayout.LayoutParams(dp(60),dp(32));dp.leftMargin=dp(6);line.addView(del,dp);
+        PersonRow pr=new PersonRow(n,p,line);rows.add(pr);parent.addView(line);del.setOnClickListener(v->{if(rows.size()<=1){toast("至少保留1位人员信息");return;}rows.remove(pr);parent.removeView(line);});
     }
+    private JSONObject findById(long id){for(int i=0;i<data.length();i++){JSONObject o=data.optJSONObject(i);if(o!=null&&o.optLong("id")==id)return o;}return null;}
+    private void removeById(long id){JSONArray a=new JSONArray();for(int i=0;i<data.length();i++){JSONObject o=data.optJSONObject(i);if(o!=null&&o.optLong("id")!=id)a.put(o);}data=a;}
+    private int typeIndex(String type){for(int i=0;i<TYPES.length;i++)if(TYPES[i].equals(type))return i;return 0;}
+    private void deleteRecord(long id){new AlertDialog.Builder(this).setMessage("确定要删除这条记录吗？删除后无法恢复！").setNegativeButton("取消",null).setPositiveButton("确定",(d,w)->{removeById(id);saveData();renderTable();}).show();}
+    private void confirmClear(){new AlertDialog.Builder(this).setMessage("确定要清空所有数据吗？清空后无法恢复！").setNegativeButton("取消",null).setPositiveButton("确定",(d,w)->{data=new JSONArray();multiMode=false;singleArea.setVisibility(View.VISIBLE);multiArea.setVisibility(View.GONE);modeButton.setText("切换批量录入模式");multiRows.removeAllViews();addRows.clear();saveData();renderTable();}).show();}
+    private void loadData(){try{String raw=getSharedPreferences("stay_personnel",MODE_PRIVATE).getString("stayPersonData","[]");data=new JSONArray(raw);}catch(Exception e){data=new JSONArray();}}
+    private void saveData(){getSharedPreferences("stay_personnel",MODE_PRIVATE).edit().putString("stayPersonData",data.toString()).apply();}
+    private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
 
-    private void add(ZipOutputStream zip, String name, String content) throws Exception {
-        zip.putNextEntry(new ZipEntry(name));
-        zip.write(content.getBytes(StandardCharsets.UTF_8));
-        zip.closeEntry();
+    private void exportExcel(){
+        if(data.length()==0){toast("暂无数据，无法导出");return;}
+        pendingExportName="住宿人员名单统计_"+new SimpleDateFormat("yyyyMMdd",Locale.CHINA).format(new Date())+".xlsx";
+        Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");intent.putExtra(Intent.EXTRA_TITLE,pendingExportName);
+        startActivityForResult(intent,CREATE_XLSX);
     }
-
-    @Override
-    public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+    @Override protected void onActivityResult(int requestCode,int resultCode,Intent intent){
+        super.onActivityResult(requestCode,resultCode,intent);if(requestCode!=CREATE_XLSX)return;
+        if(resultCode!=RESULT_OK||intent==null||intent.getData()==null){toast("已取消保存");return;}
+        try(OutputStream out=getContentResolver().openOutputStream(intent.getData())){if(out==null)throw new Exception("无法打开保存位置");writeWorkbook(out);toast("Excel 文件已保存");}
+        catch(Exception e){toast("Excel 保存失败："+e.getMessage());}
     }
-
-    @Override
-    protected void onDestroy() {
-        if (webView != null) {
-            webView.removeJavascriptInterface("AndroidBridge");
-            webView.destroy();
+    private void writeWorkbook(OutputStream out)throws Exception{
+        try(ZipOutputStream zip=new ZipOutputStream(out,StandardCharsets.UTF_8)){
+            addZip(zip,"[Content_Types].xml","<?xml version=\"1.0\" encoding=\"UTF-8\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/><Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/></Types>");
+            addZip(zip,"_rels/.rels","<?xml version=\"1.0\" encoding=\"UTF-8\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/></Relationships>");
+            addZip(zip,"xl/workbook.xml","<?xml version=\"1.0\" encoding=\"UTF-8\"?><workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"住宿人员名单\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>");
+            addZip(zip,"xl/_rels/workbook.xml.rels","<?xml version=\"1.0\" encoding=\"UTF-8\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/></Relationships>");
+            StringBuilder sheet=new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?><worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><cols><col min=\"1\" max=\"1\" width=\"8\" customWidth=\"1\"/><col min=\"2\" max=\"2\" width=\"14\" customWidth=\"1\"/><col min=\"3\" max=\"3\" width=\"12\" customWidth=\"1\"/><col min=\"4\" max=\"4\" width=\"16\" customWidth=\"1\"/><col min=\"5\" max=\"5\" width=\"20\" customWidth=\"1\"/></cols><sheetData>");
+            String[] heads={"序号","住宿类型","宿舍号","人员姓名","联系电话"};int row=1;sheet.append("<row r=\"1\">");for(int c=0;c<heads.length;c++)cell(sheet,c+1,row,heads[c]);sheet.append("</row>");
+            int serial=1;for(int i=0;i<data.length();i++){JSONObject rec=data.optJSONObject(i);if(rec==null)continue;JSONArray ps=rec.optJSONArray("personList");if(ps==null)continue;for(int j=0;j<ps.length();j++){JSONObject p=ps.optJSONObject(j);row++;sheet.append("<row r=\"").append(row).append("\">");cell(sheet,1,row,String.valueOf(serial++));cell(sheet,2,row,rec.optString("stayType"));cell(sheet,3,row,rec.optString("roomNum"));cell(sheet,4,row,p==null?"-":p.optString("name","-"));cell(sheet,5,row,p==null?"-":p.optString("phone","-"));sheet.append("</row>");}}
+            sheet.append("</sheetData></worksheet>");addZip(zip,"xl/worksheets/sheet1.xml",sheet.toString());zip.finish();
         }
-        super.onDestroy();
     }
+    private void cell(StringBuilder b,int col,int row,String value){b.append("<c r=\"").append(colName(col)).append(row).append("\" t=\"inlineStr\"><is><t xml:space=\"preserve\">").append(xml(value)).append("</t></is></c>");}
+    private String colName(int n){StringBuilder s=new StringBuilder();while(n>0){int r=(n-1)%26;s.insert(0,(char)('A'+r));n=(n-1)/26;}return s.toString();}
+    private String xml(String s){return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;").replace("'","&apos;");}
+    private void addZip(ZipOutputStream z,String name,String value)throws Exception{z.putNextEntry(new ZipEntry(name));z.write(value.getBytes(StandardCharsets.UTF_8));z.closeEntry();}
 }
