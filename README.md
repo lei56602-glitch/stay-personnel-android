@@ -19,3 +19,8 @@ gradle assembleDebug
 ```
 
 APK：`app/build/outputs/apk/debug/app-debug.apk`
+
+
+## 当前版本说明
+
+手机屏幕下表单按原网页移动端规则纵向排列；批量人员的姓名和电话并排；数据表格保留原来的六列结构并允许横向滚动。所有界面控件均为 Android 原生控件。
