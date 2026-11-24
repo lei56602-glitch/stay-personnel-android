@@ -378,7 +378,7 @@ public class MainActivity extends Activity {
         field(body,"住宿类型",st);gap(body,10);field(body,"宿舍号",room);gap(body,10);
         LinearLayout peopleBox=column();ArrayList<PersonRow> rows=new ArrayList<>();
         JSONArray old=rec.optJSONArray("personList");boolean many=rec.optString("stayType").equals("宿舍")&&old!=null&&old.length()>=2;
-        EditText oneName=null,onePhone=null;
+        final EditText[] singleFields=new EditText[2];
         if(many){
             LinearLayout head=row();head.addView(text("同宿舍人员编辑（姓名与电话一一对应）",14,INK,true),new LinearLayout.LayoutParams(0,-2,1));
             Button add=button("+ 新增人员",PURPLE,Color.rgb(118,75,162),30);head.addView(add);peopleBox.addView(head);
@@ -386,9 +386,9 @@ public class MainActivity extends Activity {
             if(old!=null)for(int i=0;i<old.length();i++){JSONObject p=old.optJSONObject(i);addDialogPerson(list,rows,p==null?"":p.optString("name"),p==null?"":p.optString("phone"));}
             add.setOnClickListener(v->addDialogPerson(list,rows,"",""));
         }else{
-            JSONObject p=old==null?new JSONObject():old.optJSONObject(0);oneName=edit("请输入姓名",false);onePhone=edit("请输入联系电话",true);
-            if(p!=null){oneName.setText(p.optString("name"));onePhone.setText(p.optString("phone"));}
-            field(peopleBox,"人员姓名",oneName);gap(peopleBox,8);field(peopleBox,"联系电话",onePhone);
+            JSONObject p=old==null?new JSONObject():old.optJSONObject(0);singleFields[0]=edit("请输入姓名",false);singleFields[1]=edit("请输入联系电话",true);
+            if(p!=null){singleFields[0].setText(p.optString("name"));singleFields[1].setText(p.optString("phone"));}
+            field(peopleBox,"人员姓名",singleFields[0]);gap(peopleBox,8);field(peopleBox,"联系电话",singleFields[1]);
         }
         body.addView(peopleBox);
         ScrollView scroll=new ScrollView(this);scroll.addView(body);
@@ -399,7 +399,7 @@ public class MainActivity extends Activity {
             if((type.equals("宿舍")||type.equals("新房宿舍"))&&rn.isEmpty()){toast("请输入宿舍号");return;}
             JSONArray plist=new JSONArray();
             if(many){plist=collectRows(rows);if(plist.length()==0){toast("请至少填写1位人员姓名");return;}}
-            else{String n=oneName.getText().toString().trim(),ph=onePhone.getText().toString().trim();if(n.isEmpty()){toast("请输入人员姓名");return;}JSONObject p=new JSONObject();try{p.put("name",n);p.put("phone",ph);}catch(Exception ignored){}plist.put(p);}
+            else{String n=singleFields[0].getText().toString().trim(),ph=singleFields[1].getText().toString().trim();if(n.isEmpty()){toast("请输入人员姓名");return;}JSONObject p=new JSONObject();try{p.put("name",n);p.put("phone",ph);}catch(Exception ignored){}plist.put(p);}
             removeById(id);
             if(type.equals("宿舍")){JSONObject exist=findDorm(rn);if(exist!=null){JSONArray oldPeople=exist.optJSONArray("personList");for(int i=0;i<plist.length();i++){JSONObject p=plist.optJSONObject(i);if(!containsName(oldPeople,p.optString("name")))oldPeople.put(p);}toast("已保存修改，并自动合并到【宿舍-"+rn+"】");}else{data=prepend(record(type,rn,plist));toast("修改已保存");}}
             else{data=prepend(record(type,rn.isEmpty()?"-":rn,plist));toast("修改已保存");}
