@@ -141,7 +141,10 @@ public class MainActivity extends Activity {
         TextView t=text(label,14,INK,true); wrap.addView(t);
         LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(-1,dp(42)); ip.topMargin=dp(6);
         wrap.addView(input,ip);
-        LinearLayout.LayoutParams wp=new LinearLayout.LayoutParams(0,-2,1); wp.rightMargin=dp(7);
+        LinearLayout.LayoutParams wp = parent.getOrientation() == LinearLayout.HORIZONTAL
+                ? new LinearLayout.LayoutParams(0, -2, 1)
+                : new LinearLayout.LayoutParams(-1, -2);
+        wp.rightMargin=dp(7);
         parent.addView(wrap,wp);
     }
     private void buildScreen() {
@@ -281,13 +284,13 @@ public class MainActivity extends Activity {
     private void autoRecognize(){
         String original=recognizeInput.getText().toString().trim();if(original.isEmpty())return;
         String work=original,person="",phone="",room="";
-        Matcher pm=Pattern.compile("(?:^|[^\\\\d])(1[3-9]\\\\d{9})(?:$|[^\\\\d])").matcher(work);
+        Matcher pm=Pattern.compile("(?:^|[^\\d])(1[3-9]\\d{9})(?:$|[^\\d])").matcher(work);
         if(pm.find()){phone=pm.group(1);work=pm.replaceFirst(" ");}
-        Matcher rm=Pattern.compile("(?:\\\\d+[栋号楼单元层室房宿舍\\\\-])*\\\\d{3,4}[A-Za-z]?").matcher(work);
-        if(rm.find()){room=rm.group().replaceAll("[^\\\\dA-Za-z栋号楼单元层室房宿舍\\\\-]","").trim();work=work.replace(room," ");}
-        else {Matcher pure=Pattern.compile("(?:^|[^\\\\d])(\\\\d{3,4}[A-Za-z]?)(?:$|[^\\\\d])").matcher(work);if(pure.find()){room=pure.group(1);work=pure.replaceFirst(" ");}}
-        work=work.replaceAll("姓名|名字|电话|手机|手机号|宿舍|宿舍号|房号|房间号|住宿|类型|：|:|;|；|,|，|、|\\\\.|。|\\\\?|？|!|！|\\\\s","");
-        Matcher nm=Pattern.compile("[\\\\u4e00-\\\\u9fa5]{2,4}").matcher(work);if(nm.find())person=nm.group();else person=work;
+        Matcher rm=Pattern.compile("(?:\\d+[栋号楼单元层室房宿舍\\-])*\\d{3,4}[A-Za-z]?").matcher(work);
+        if(rm.find()){room=rm.group().replaceAll("[^\\dA-Za-z栋号楼单元层室房宿舍\\-]","").trim();work=work.replace(room," ");}
+        else {Matcher pure=Pattern.compile("(?:^|[^\\d])(\\d{3,4}[A-Za-z]?)(?:$|[^\\d])").matcher(work);if(pure.find()){room=pure.group(1);work=pure.replaceFirst(" ");}}
+        work=work.replaceAll("姓名|名字|电话|手机|手机号|宿舍|宿舍号|房号|房间号|住宿|类型|：|:|;|；|,|，|、|\\.|。|\\?|？|!|！|\\s","");
+        Matcher nm=Pattern.compile("[\\u4e00-\\u9fa5]{2,4}").matcher(work);if(nm.find())person=nm.group();else person=work;
         if(!person.isEmpty())nameInput.setText(person);if(!phone.isEmpty())phoneInput.setText(phone);
         if(!room.isEmpty()){roomInput.setText(room);typeSpinner.setSelection(0);updateRoomVisibility();}
     }
