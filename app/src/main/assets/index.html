@@ -1346,10 +1346,6 @@
                 alert('暂无数据，无法导出');
                 return;
             }
-            if (typeof XLSX === 'undefined') {
-                alert('导出库加载失败，请检查网络连接后重试');
-                return;
-            }
             const excelData = [];
             // 表头
             excelData.push(['序号', '住宿类型', '宿舍号', '人员姓名', '联系电话']);
