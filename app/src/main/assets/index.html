@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>住宿人员名单统计系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 液态玻璃全局基底 */
+        body {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: 100vh;
+            /* 柔和渐变基底，适配玻璃质感 */
+            background: linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 50%, #f3e5f5 100%);
+            background-attachment: fixed;
+            position: relative;
+            /* 给底部留空间，避免悬浮按钮遮挡 */
+            padding-bottom: 80px;
+        }
+
+        /* 玻璃态通用卡片样式 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        /* 头部样式 */
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 20px;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        .header p {
+            color: #4a5568;
+            font-size: 14px;
+            opacity: 0.85;
+        }
+
+        /* 操作卡片 */
+        .operate-card {
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        /* 智能识别区域玻璃态优化 */
+        .ai-recognize-area {
+            margin-bottom: 24px;
+            padding: 20px;
+            border-radius: 12px;
+            background: rgba(102, 126, 234, 0.08);
+            border: 1px dashed rgba(102, 126, 234, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .ai-recognize-area .recognize-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #4c51bf;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ai-recognize-area .recognize-tip {
+            font-size: 12px;
+            color: #4a5568;
+            margin-bottom: 12px;
+            opacity: 0.8;
+        }
+        .ai-recognize-area textarea {
+            width: 100%;
+            min-height: 70px;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            resize: vertical;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .ai-recognize-area textarea:focus {
+            border-color: #4c51bf;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 输入组通用样式-玻璃态 */
+        .base-input-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 18px;
+            align-items: flex-end;
+        }
+        .input-group {
+            flex: 1;
+            min-width: 160px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            color: #2d3748;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            height: 42px;
+            padding: 0 14px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #2d3748;
+        }
+        .input-group input:focus,
+        .input-group select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+            background: rgba(255, 255, 255, 0.7);
+        }
+        .input-group input:disabled,
+        .input-group select:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* 多人员编辑区域 */
+        .multi-person-edit {
+            margin: 18px 0;
+            padding: 20px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .multi-person-edit .edit-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .person-item-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: flex-end;
+        }
+        .person-item-row .input-group {
+            flex: 1;
+            min-width: 140px;
+        }
+
+        /* 玻璃态按钮通用样式 */
+        button {
+            height: 42px;
+            padding: 0 22px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            white-space: nowrap;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+        }
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+        }
+        .btn-success:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+            transform: translateY(-1px);
+        }
+        .btn-success:active {
+            transform: scale(0.98);
+        }
+        .btn-default {
+            background: rgba(160, 174, 192, 0.7);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .btn-default:hover {
+            background: rgba(160, 174, 192, 0.9);
+            transform: translateY(-1px);
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(237, 137, 54, 0.3);
+        }
+        .btn-warning:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 6px 20px rgba(237, 137, 54, 0.4);
+            transform: translateY(-1px);
+        }
+        .btn-warning:active {
+            transform: scale(0.98);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+        }
+        .btn-danger:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 6px 20px rgba(245, 101, 101, 0.4);
+            transform: translateY(-1px);
+        }
+        .btn-danger:active {
+            transform: scale(0.98);
+        }
+        .btn-small {
+            height: 32px;
+            padding: 0 14px;
+            font-size: 13px;
+            margin-right: 6px;
+        }
+        .btn-mini {
+            height: 28px;
+            padding: 0 12px;
+            font-size: 12px;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        /* 高级搜索区域玻璃态优化 */
+        .search-area {
+            margin-top: 24px;
+            padding: 20px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .search-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .search-header h4 {
+            font-size: 15px;
+            color: #2d3748;
+            font-weight: 600;
+            margin: 0;
+        }
+        .search-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+            padding-bottom: 8px;
+        }
+        .search-tab {
+            padding: 6px 14px;
+            font-size: 13px;
+            color: #4a5568;
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .search-tab.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            border-bottom: 2px solid #667eea;
+            font-weight: 600;
+        }
+        .search-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+        }
+        .search-input-group {
+            flex: 1;
+            min-width: 200px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .search-input-group label {
+            font-size: 13px;
+            color: #2d3748;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+        .search-input-group input {
+            flex: 1;
+            height: 38px;
+            padding: 0 12px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        .search-input-group input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+        .search-btn-group {
+            display: flex;
+            gap: 8px;
+        }
+        #advancedFilterPanel {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.6);
+        }
+        .stats-info {
+            margin: 18px 0 5px;
+            font-size: 14px;
+            color: #2d3748;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+        }
+        .stats-info span {
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        /* 玻璃态表格容器 */
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+            background: rgba(255, 255, 255, 0.5);
+        }
+        table thead {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        table th,
+        table td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            color: #2d3748;
+            vertical-align: middle;
+            line-height: 1.5;
+        }
+        table th {
+            font-weight: 700;
+            white-space: nowrap;
+            color: #1a202c;
+        }
+        table tbody tr {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.6);
+        }
+        /* 搜索高亮样式 */
+        .highlight {
+            background-color: #fff3cd;
+            color: #d97706;
+            padding: 0 2px;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+        /* 合并宿舍标红样式 */
+        .merged-room-num {
+            color: #e53e3e;
+            font-weight: 700;
+        }
+        .empty-tip {
+            text-align: center;
+            padding: 50px 0;
+            color: #4a5568;
+            font-size: 14px;
+        }
+
+        /* 固定悬浮提交栏玻璃态优化 */
+        .fixed-submit-bar {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 999;
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 编辑弹窗模态框-玻璃态核心 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal-content {
+            width: 100%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        .modal-close-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 50%;
+            background: rgba(245, 101, 101, 0.8);
+            color: white;
+            font-size: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-close-btn:hover {
+            background: rgba(245, 101, 101, 1);
+            transform: rotate(90deg);
+        }
+        .modal-body {
+            padding: 24px;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                padding-bottom: 70px;
+            }
+            .input-group {
+                min-width: 100%;
+            }
+            .person-item-row .input-group {
+                min-width: 45%;
+            }
+            button {
+                flex: 1;
+                min-width: 120px;
+            }
+            .search-input-group {
+                min-width: 100%;
+            }
+            .fixed-submit-bar {
+                bottom: 12px;
+                right: 12px;
+                left: 12px;
+                justify-content: center;
+                padding: 10px;
+            }
+            .fixed-submit-bar button {
+                flex: 1;
+                min-width: auto;
+            }
+            .modal-content {
+                max-height: 85vh;
+            }
+            .modal-header, .modal-body, .modal-footer {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header glass-card">
+        <h1>住宿人员名单统计系统</h1>
+        <p>全离线数据存储 | 智能识别快速录入 | 同宿舍自动合并 | 一键导出Excel</p>
+    </div>
+
+    <div class="operate-card glass-card">
+        <!-- 智能识别快速录入区 -->
+        <div class="ai-recognize-area">
+            <div class="recognize-title">
+                <span>📋 智能识别快速录入</span>
+                <button id="recognizeBtn" class="btn-primary btn-mini">一键识别填充</button>
+            </div>
+            <div class="recognize-tip">支持粘贴任意格式的「姓名+电话+宿舍号」文本，自动拆分填充（例：张三 13800001111 101）</div>
+            <textarea id="recognizeTextarea" placeholder="请粘贴包含姓名、电话、宿舍号的文本，粘贴后自动识别..."></textarea>
+        </div>
+
+        <!-- 基础信息输入区 -->
+        <div class="base-input-row">
+            <div class="input-group">
+                <label for="stayType">住宿类型</label>
+                <select id="stayType">
+                    <option value="宿舍">宿舍</option>
+                    <option value="新房宿舍">新房宿舍</option>
+                    <option value="自有房">自有房</option>
+                    <option value="外租房">外租房</option>
+                </select>
+            </div>
+            <div class="input-group" id="roomNumGroup">
+                <label for="roomNum">宿舍号</label>
+                <input type="text" id="roomNum" placeholder="请输入宿舍号">
+            </div>
+        </div>
+
+        <!-- 单人新增模式 -->
+        <div id="singleEditMode" class="base-input-row">
+            <div class="input-group">
+                <label for="userName">人员姓名</label>
+                <input type="text" id="userName" placeholder="请输入姓名">
+            </div>
+            <div class="input-group">
+                <label for="userPhone">联系电话</label>
+                <input type="tel" id="userPhone" placeholder="请输入联系电话">
+            </div>
+        </div>
+
+        <!-- 多人员合并新增模式 -->
+        <div id="multiEditMode" class="multi-person-edit">
+            <div class="edit-title">
+                <span>同宿舍人员批量录入（姓名与电话一一对应）</span>
+                <button id="addPersonBtn" class="btn-primary btn-mini">+ 新增人员</button>
+            </div>
+            <div id="personEditList">
+                <!-- 动态生成人员编辑行 -->
+            </div>
+        </div>
+
+        <!-- 功能按钮区 -->
+        <div class="btn-row">
+            <button id="toggleMultiModeBtn" class="btn-default">切换批量录入模式</button>
+            <button id="clearBtn" class="btn-warning">一键清空所有数据</button>
+            <button id="exportBtn" class="btn-success">导出Excel</button>
+        </div>
+
+        <!-- 高级搜索区 -->
+        <div class="search-area">
+            <div class="search-header">
+                <h4>🔍 高级搜索筛选</h4>
+                <button id="resetSearchBtn" class="btn-default btn-mini">重置搜索</button>
+            </div>
+            <div class="search-tabs">
+                <div class="search-tab active" data-type="all">综合搜索</div>
+                <div class="search-tab" data-type="name">按姓名</div>
+                <div class="search-tab" data-type="phone">按电话</div>
+                <div class="search-tab" data-type="room">按宿舍号</div>
+                <div class="search-tab" data-type="type">按住宿类型</div>
+            </div>
+            <div class="search-content">
+                <div class="search-input-group">
+                    <label id="searchLabel" for="searchInput">关键词：</label>
+                    <input type="text" id="searchInput" placeholder="输入关键词搜索（支持模糊匹配）">
+                </div>
+                <div class="search-btn-group">
+                    <button id="searchBtn" class="btn-primary btn-small">搜索</button>
+                    <button id="advancedSearchBtn" class="btn-default btn-small">高级筛选</button>
+                </div>
+            </div>
+            <!-- 高级筛选面板 -->
+            <div id="advancedFilterPanel" style="display: none;">
+                <div class="base-input-row">
+                    <div class="input-group">
+                        <label for="filterStayType">住宿类型筛选</label>
+                        <select id="filterStayType">
+                            <option value="">全部类型</option>
+                            <option value="宿舍">宿舍</option>
+                            <option value="新房宿舍">新房宿舍</option>
+                            <option value="自有房">自有房</option>
+                            <option value="外租房">外租房</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="filterRoomNum">宿舍号筛选</label>
+                        <input type="text" id="filterRoomNum" placeholder="输入宿舍号模糊匹配">
+                    </div>
+                </div>
+            </div>
+            <div class="stats-info">
+                总记录数：<span id="totalCount">0</span> 条 | 总人数：<span id="totalPersonCount">0</span> 人 | 搜索匹配：<span id="matchCount">0</span> 条
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="table-wrap">
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>住宿类型</th>
+                    <th>宿舍号</th>
+                    <th>人员姓名</th>
+                    <th>联系电话</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td colspan="6" class="empty-tip">暂无数据，添加第一条记录吧</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 固定悬浮新增栏 -->
+    <div class="fixed-submit-bar">
+        <button id="submitBtn" class="btn-primary">添加记录</button>
+    </div>
+
+    <!-- 液态玻璃编辑弹窗（核心新增，无需返回顶部） -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑住宿记录</h3>
+                <button id="modalCloseBtn" class="modal-close-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="base-input-row">
+                    <div class="input-group">
+                        <label for="modalStayType">住宿类型</label>
+                        <select id="modalStayType">
+                            <option value="宿舍">宿舍</option>
+                            <option value="新房宿舍">新房宿舍</option>
+                            <option value="自有房">自有房</option>
+                            <option value="外租房">外租房</option>
+                        </select>
+                    </div>
+                    <div class="input-group" id="modalRoomNumGroup">
+                        <label for="modalRoomNum">宿舍号</label>
+                        <input type="text" id="modalRoomNum" placeholder="请输入宿舍号">
+                    </div>
+                </div>
+                <!-- 弹窗单人编辑模式 -->
+                <div id="modalSingleEditMode" class="base-input-row">
+                    <div class="input-group">
+                        <label for="modalUserName">人员姓名</label>
+                        <input type="text" id="modalUserName" placeholder="请输入姓名">
+                    </div>
+                    <div class="input-group">
+                        <label for="modalUserPhone">联系电话</label>
+                        <input type="tel" id="modalUserPhone" placeholder="请输入联系电话">
+                    </div>
+                </div>
+                <!-- 弹窗多人编辑模式 -->
+                <div id="modalMultiEditMode" class="multi-person-edit">
+                    <div class="edit-title">
+                        <span>同宿舍人员编辑（姓名与电话一一对应）</span>
+                        <button id="modalAddPersonBtn" class="btn-primary btn-mini">+ 新增人员</button>
+                    </div>
+                    <div id="modalPersonEditList">
+                        <!-- 动态生成人员编辑行 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="modalCancelBtn" class="btn-default">取消</button>
+                <button id="modalSaveBtn" class="btn-primary">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Excel导出库 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        // 全局数据存储
+        let dataList = JSON.parse(localStorage.getItem('stayPersonData')) || [];
+        let editingId = null; // 全局编辑ID（弹窗专用）
+        let isMultiMode = false; // 新增模式切换
+        // 搜索相关全局变量
+        let currentSearchType = 'all';
+        let searchKeyword = '';
+        let filterParams = { stayType: '', roomNum: '' };
+
+        // DOM元素获取
+        const recognizeTextarea = document.getElementById('recognizeTextarea');
+        const recognizeBtn = document.getElementById('recognizeBtn');
+        const stayTypeSelect = document.getElementById('stayType');
+        const roomNumGroup = document.getElementById('roomNumGroup');
+        const roomNumInput = document.getElementById('roomNum');
+        const userNameInput = document.getElementById('userName');
+        const userPhoneInput = document.getElementById('userPhone');
+        const singleEditMode = document.getElementById('singleEditMode');
+        const multiEditMode = document.getElementById('multiEditMode');
+        const personEditList = document.getElementById('personEditList');
+        const addPersonBtn = document.getElementById('addPersonBtn');
+        const toggleMultiModeBtn = document.getElementById('toggleMultiModeBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const tableBody = document.getElementById('tableBody');
+        const totalCountEl = document.getElementById('totalCount');
+        const totalPersonCountEl = document.getElementById('totalPersonCount');
+        const matchCountEl = document.getElementById('matchCount');
+        // 搜索相关DOM
+        const searchTabs = document.querySelectorAll('.search-tab');
+        const searchLabel = document.getElementById('searchLabel');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resetSearchBtn = document.getElementById('resetSearchBtn');
+        const advancedSearchBtn = document.getElementById('advancedSearchBtn');
+        const advancedFilterPanel = document.getElementById('advancedFilterPanel');
+        const filterStayType = document.getElementById('filterStayType');
+        const filterRoomNum = document.getElementById('filterRoomNum');
+        // 弹窗相关DOM
+        const editModal = document.getElementById('editModal');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+        const modalCancelBtn = document.getElementById('modalCancelBtn');
+        const modalSaveBtn = document.getElementById('modalSaveBtn');
+        const modalStayTypeSelect = document.getElementById('modalStayType');
+        const modalRoomNumGroup = document.getElementById('modalRoomNumGroup');
+        const modalRoomNumInput = document.getElementById('modalRoomNum');
+        const modalSingleEditMode = document.getElementById('modalSingleEditMode');
+        const modalMultiEditMode = document.getElementById('modalMultiEditMode');
+        const modalPersonEditList = document.getElementById('modalPersonEditList');
+        const modalAddPersonBtn = document.getElementById('modalAddPersonBtn');
+        const modalUserNameInput = document.getElementById('modalUserName');
+        const modalUserPhoneInput = document.getElementById('modalUserPhone');
+
+        // 页面初始化
+        init();
+        function init() {
+            // 基础事件绑定
+            stayTypeSelect.addEventListener('change', toggleRoomNumInput);
+            toggleRoomNumInput();
+            toggleMultiModeBtn.addEventListener('click', toggleAddMode);
+            // 智能识别事件
+            recognizeTextarea.addEventListener('input', autoRecognize);
+            recognizeBtn.addEventListener('click', autoRecognize);
+            // 新增相关事件
+            submitBtn.addEventListener('click', handleAddSubmit);
+            addPersonBtn.addEventListener('click', () => addPersonEditRow(personEditList));
+            // 数据操作事件
+            clearBtn.addEventListener('click', clearAllData);
+            exportBtn.addEventListener('click', exportToExcel);
+            window.addEventListener('beforeunload', saveData);
+            // 搜索相关事件
+            bindSearchEvents();
+            // 弹窗相关事件
+            bindModalEvents();
+            // 初始化新增模式
+            initAddMode();
+            // 初始渲染表格
+            renderTable();
+        }
+
+        // ========== 新增模式切换 ==========
+        function initAddMode() {
+            isMultiMode = false;
+            singleEditMode.style.display = 'flex';
+            multiEditMode.style.display = 'none';
+            toggleMultiModeBtn.textContent = '切换批量录入模式';
+            personEditList.innerHTML = '';
+        }
+        function toggleAddMode() {
+            isMultiMode = !isMultiMode;
+            if (isMultiMode) {
+                singleEditMode.style.display = 'none';
+                multiEditMode.style.display = 'block';
+                toggleMultiModeBtn.textContent = '切换单人录入模式';
+                // 初始化至少一行
+                if (personEditList.children.length === 0) {
+                    addPersonEditRow(personEditList);
+                }
+            } else {
+                singleEditMode.style.display = 'flex';
+                multiEditMode.style.display = 'none';
+                toggleMultiModeBtn.textContent = '切换批量录入模式';
+                personEditList.innerHTML = '';
+            }
+            // 清空输入
+            userNameInput.value = '';
+            userPhoneInput.value = '';
+        }
+
+        // ========== 弹窗事件绑定 ==========
+        function bindModalEvents() {
+            // 关闭弹窗
+            modalCloseBtn.addEventListener('click', closeModal);
+            modalCancelBtn.addEventListener('click', closeModal);
+            // 点击蒙层关闭
+            editModal.addEventListener('click', (e) => {
+                if (e.target === editModal) closeModal();
+            });
+            // 弹窗内住宿类型切换
+            modalStayTypeSelect.addEventListener('change', toggleModalRoomNumInput);
+            // 弹窗新增人员行
+            modalAddPersonBtn.addEventListener('click', () => addPersonEditRow(modalPersonEditList));
+            // 保存修改
+            modalSaveBtn.addEventListener('click', handleEditSave);
+        }
+        // 打开弹窗
+        function openModal() {
+            editModal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+        // 关闭弹窗
+        function closeModal() {
+            editModal.classList.remove('show');
+            document.body.style.overflow = '';
+            editingId = null;
+            modalPersonEditList.innerHTML = '';
+        }
+        // 弹窗宿舍号显示切换
+        function toggleModalRoomNumInput() {
+            const currentType = modalStayTypeSelect.value;
+            if (currentType === '宿舍' || currentType === '新房宿舍') {
+                modalRoomNumGroup.style.display = 'block';
+            } else {
+                modalRoomNumGroup.style.display = 'none';
+                modalRoomNumInput.value = '';
+            }
+        }
+
+        // ========== 搜索功能相关 ==========
+        function bindSearchEvents() {
+            // 搜索标签切换
+            searchTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    searchTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentSearchType = tab.dataset.type;
+                    // 更新搜索标签文本
+                    switch(currentSearchType) {
+                        case 'all':
+                            searchLabel.textContent = '关键词：';
+                            searchInput.placeholder = '输入关键词搜索（支持模糊匹配）';
+                            break;
+                        case 'name':
+                            searchLabel.textContent = '姓名：';
+                            searchInput.placeholder = '输入姓名模糊搜索';
+                            break;
+                        case 'phone':
+                            searchLabel.textContent = '电话：';
+                            searchInput.placeholder = '输入电话模糊搜索';
+                            break;
+                        case 'room':
+                            searchLabel.textContent = '宿舍号：';
+                            searchInput.placeholder = '输入宿舍号模糊搜索';
+                            break;
+                        case 'type':
+                            searchLabel.textContent = '住宿类型：';
+                            searchInput.placeholder = '输入住宿类型模糊搜索';
+                            break;
+                    }
+                });
+            });
+            // 搜索按钮点击
+            searchBtn.addEventListener('click', () => {
+                searchKeyword = searchInput.value.trim().toLowerCase();
+                renderTable();
+            });
+            // 回车键搜索
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    searchKeyword = searchInput.value.trim().toLowerCase();
+                    renderTable();
+                }
+            });
+            // 重置搜索
+            resetSearchBtn.addEventListener('click', () => {
+                searchKeyword = '';
+                currentSearchType = 'all';
+                filterParams = { stayType: '', roomNum: '' };
+                searchInput.value = '';
+                filterStayType.value = '';
+                filterRoomNum.value = '';
+                searchTabs.forEach(t => t.classList.remove('active'));
+                document.querySelector('.search-tab[data-type="all"]').classList.add('active');
+                searchLabel.textContent = '关键词：';
+                searchInput.placeholder = '输入关键词搜索（支持模糊匹配）';
+                advancedFilterPanel.style.display = 'none';
+                renderTable();
+            });
+            // 高级筛选切换
+            advancedSearchBtn.addEventListener('click', () => {
+                advancedFilterPanel.style.display = advancedFilterPanel.style.display === 'none' ? 'block' : 'none';
+            });
+            // 筛选参数变化
+            filterStayType.addEventListener('change', () => {
+                filterParams.stayType = filterStayType.value;
+                renderTable();
+            });
+            filterRoomNum.addEventListener('input', () => {                filterParams.roomNum = filterRoomNum.value.trim().toLowerCase();
+                renderTable();
+            });
+        }
+        // 搜索过滤逻辑
+        function filterData(list) {
+            if (!list.length) return [];
+            let result = [...list];
+            // 先应用高级筛选参数
+            if (filterParams.stayType) {
+                result = result.filter(item => item.stayType === filterParams.stayType);
+            }
+            if (filterParams.roomNum) {
+                result = result.filter(item => item.roomNum.toLowerCase().includes(filterParams.roomNum));
+            }
+            // 再应用关键词搜索
+            if (searchKeyword) {
+                switch(currentSearchType) {
+                    case 'all':
+                        result = result.filter(item => {
+                            const matchRoom = item.roomNum.toLowerCase().includes(searchKeyword);
+                            const matchType = item.stayType.toLowerCase().includes(searchKeyword);
+                            const matchPerson = item.personList.some(person => 
+                                person.name.toLowerCase().includes(searchKeyword) 
+                                || person.phone.toLowerCase().includes(searchKeyword)
+                            );
+                            return matchRoom || matchType || matchPerson;
+                        });
+                        break;
+                    case 'name':
+                        result = result.filter(item => 
+                            item.personList.some(person => person.name.toLowerCase().includes(searchKeyword))
+                        );
+                        break;
+                    case 'phone':
+                        result = result.filter(item => 
+                            item.personList.some(person => person.phone.toLowerCase().includes(searchKeyword))
+                        );
+                        break;
+                    case 'room':
+                        result = result.filter(item => item.roomNum.toLowerCase().includes(searchKeyword));
+                        break;
+                    case 'type':
+                        result = result.filter(item => item.stayType.toLowerCase().includes(searchKeyword));
+                        break;
+                }
+            }
+            return result;
+        }
+        // 高亮关键词
+        function highlightText(text, keyword) {
+            if (!keyword || !text) return text;
+            const reg = new RegExp(keyword, 'gi');
+            return text.replace(reg, match => `<span class="highlight">${match}</span>`);
+        }
+
+        // ========== 核心功能逻辑 ==========
+        // 智能识别逻辑
+        function autoRecognize() {
+            const originText = recognizeTextarea.value.trim();
+            if (!originText) return;
+            let processText = originText;
+            let userName = '', userPhone = '', roomNum = '';
+            // 第一步：优先提取手机号
+            const phoneReg = /(?:^|[^\d])(1[3-9]\d{9})(?:$|[^\d])/g;
+            const phoneMatch = processText.match(phoneReg);
+            if (phoneMatch) {
+                userPhone = phoneMatch[0].replace(/[^\d]/g, '');
+                processText = processText.replace(phoneReg, ' ');
+            }
+            // 第二步：提取宿舍号
+            const roomKeyReg = /(?:\d+[栋号楼单元层室房宿舍\-])*\d{3,4}[A-Za-z]?/g;
+            const roomPureReg = /(?:^|[^\d])(\d{3,4}[A-Za-z]?)(?:$|[^\d])/g;
+            
+            let roomMatch = processText.match(roomKeyReg);
+            if (roomMatch && roomMatch.length > 0) {
+                roomNum = roomMatch[0].replace(/[^\dA-Za-z栋号楼单元层室房宿舍\-]/g, '').trim();
+            } else {
+                roomMatch = processText.match(roomPureReg);
+                if (roomMatch && roomMatch.length > 0) {
+                    roomNum = roomMatch[0].replace(/[^\dA-Za-z]/g, '').trim();
+                }
+            }
+            if (roomNum) {
+                processText = processText.replace(new RegExp(roomNum, 'g'), ' ');
+            }
+            // 第三步：提取姓名
+            const filterWords = /姓名|名字|电话|手机|手机号|宿舍|宿舍号|房号|房间号|住宿|类型|：|:|;|；|,|，|、|\.|\。|\?|？|!|！|\s|\n|\r|\t/g;
+            processText = processText.replace(filterWords, '').trim();
+            const nameMatch = processText.match(/[\u4e00-\u9fa5]{2,4}/);
+            if (nameMatch) {
+                userName = nameMatch[0];
+            } else if (processText.length > 0) {
+                userName = processText;
+            }
+            // 自动填充
+            if (userName) userNameInput.value = userName;
+            if (userPhone) userPhoneInput.value = userPhone;
+            if (roomNum) {
+                roomNumInput.value = roomNum;
+                stayTypeSelect.value = '宿舍';
+                toggleRoomNumInput();
+            }
+        }
+        // 宿舍号输入框显示切换
+        function toggleRoomNumInput() {
+            const currentType = stayTypeSelect.value;
+            if (currentType === '宿舍' || currentType === '新房宿舍') {
+                roomNumGroup.style.display = 'block';
+            } else {
+                roomNumGroup.style.display = 'none';
+                roomNumInput.value = '';
+            }
+        }
+        // 生成人员编辑行
+        function createPersonEditRow(container, name = '', phone = '') {
+            const row = document.createElement('div');
+            row.className = 'person-item-row';
+            row.innerHTML = `
+                <div class="input-group">
+                    <label>姓名</label>
+                    <input type="text" class="person-name" placeholder="请输入姓名" value="${name}">
+                </div>
+                <div class="input-group">
+                    <label>联系电话</label>
+                    <input type="tel" class="person-phone" placeholder="请输入联系电话" value="${phone}">
+                </div>
+                <button class="btn-danger btn-mini delete-person-btn">删除</button>
+            `;
+            row.querySelector('.delete-person-btn').addEventListener('click', () => {
+                if (container.children.length <= 1) {
+                    alert('至少保留1位人员信息');
+                    return;
+                }
+                row.remove();
+            });
+            return row;
+        }
+        // 新增人员编辑行
+        function addPersonEditRow(container, name = '', phone = '') {
+            container.appendChild(createPersonEditRow(container, name, phone));
+        }
+
+        // ========== 新增记录提交 ==========
+        function handleAddSubmit() {
+            const stayType = stayTypeSelect.value;
+            const roomNum = roomNumInput.value.trim();
+            let personList = [];
+
+            // 校验必填项
+            if ((stayType === '宿舍' || stayType === '新房宿舍') && !roomNum) {
+                alert('请输入宿舍号');
+                return;
+            }
+            // 获取人员数据
+            if (isMultiMode) {
+                const rows = personEditList.querySelectorAll('.person-item-row');
+                rows.forEach(row => {
+                    const name = row.querySelector('.person-name').value.trim();
+                    const phone = row.querySelector('.person-phone').value.trim();
+                    if (name) personList.push({ name, phone });
+                });
+                if (personList.length === 0) {
+                    alert('请至少填写1位人员姓名');
+                    return;
+                }
+            } else {
+                const name = userNameInput.value.trim();
+                const phone = userPhoneInput.value.trim();
+                if (!name) {
+                    alert('请输入人员姓名');
+                    return;
+                }
+                personList.push({ name, phone });
+            }
+
+            // 同宿舍自动合并逻辑
+            if (stayType === '宿舍') {
+                const existRecord = dataList.find(item => 
+                    item.stayType === '宿舍' && item.roomNum === roomNum
+                );
+                if (existRecord) {
+                    const existNames = existRecord.personList.map(p => p.name);
+                    let addCount = 0;
+                    personList.forEach(person => {
+                        if (!existNames.includes(person.name)) {
+                            existRecord.personList.push(person);
+                            addCount++;
+                        }
+                    });
+                    if (addCount > 0) {
+                        alert(`已自动将${addCount}人合并到【宿舍-${roomNum}】`);
+                    } else {
+                        alert('该宿舍已存在这些人员，无需重复添加');
+                    }
+                } else {
+                    dataList.unshift({ id: Date.now(), stayType, roomNum, personList });
+                    alert('✅ 记录添加成功');
+                }
+            } else {
+                dataList.unshift({ id: Date.now(), stayType, roomNum: roomNum || '-', personList });
+                alert('✅ 记录添加成功');
+            }
+
+            // 清空输入框，方便连续录入
+            userNameInput.value = '';
+            userPhoneInput.value = '';
+            roomNumInput.value = '';
+            recognizeTextarea.value = '';
+            personEditList.innerHTML = '';
+            if (isMultiMode) addPersonEditRow(personEditList);
+            userNameInput.focus();
+
+            // 保存并刷新
+            saveData();
+            renderTable();
+        }
+
+        // ========== 编辑记录（弹窗打开） ==========
+        function editRecord(id) {
+            const record = dataList.find(item => item.id === id);
+            if (!record) return;
+            editingId = id;
+
+            // 填充弹窗表单
+            modalStayTypeSelect.value = record.stayType;
+            toggleModalRoomNumInput();
+            modalRoomNumInput.value = record.roomNum === '-' ? '' : record.roomNum;
+
+            // 判断单人/多人模式
+            if (record.stayType === '宿舍' && record.personList.length >= 2) {
+                modalSingleEditMode.style.display = 'none';
+                modalMultiEditMode.style.display = 'block';
+                modalPersonEditList.innerHTML = '';
+                record.personList.forEach(person => {
+                    addPersonEditRow(modalPersonEditList, person.name, person.phone);
+                });
+            } else {
+                modalSingleEditMode.style.display = 'flex';
+                modalMultiEditMode.style.display = 'none';
+                const person = record.personList[0];
+                modalUserNameInput.value = person.name;
+                modalUserPhoneInput.value = person.phone;
+            }
+
+            // 打开弹窗
+            openModal();
+        }
+
+        // ========== 编辑记录保存 ==========
+        function handleEditSave() {
+            if (!editingId) return;
+            const stayType = modalStayTypeSelect.value;
+            const roomNum = modalRoomNumInput.value.trim();
+            let personList = [];
+
+            // 校验必填项
+            if ((stayType === '宿舍' || stayType === '新房宿舍') && !roomNum) {
+                alert('请输入宿舍号');
+                return;
+            }
+            // 获取人员数据
+            if (modalMultiEditMode.style.display === 'block') {
+                const rows = modalPersonEditList.querySelectorAll('.person-item-row');
+                rows.forEach(row => {
+                    const name = row.querySelector('.person-name').value.trim();
+                    const phone = row.querySelector('.person-phone').value.trim();
+                    if (name) personList.push({ name, phone });
+                });
+                if (personList.length === 0) {
+                    alert('请至少填写1位人员姓名');
+                    return;
+                }
+            } else {
+                const name = modalUserNameInput.value.trim();
+                const phone = modalUserPhoneInput.value.trim();
+                if (!name) {
+                    alert('请输入人员姓名');
+                    return;
+                }
+                personList.push({ name, phone });
+            }
+
+            // 先删除原记录
+            dataList = dataList.filter(item => item.id !== editingId);
+
+            // 同宿舍合并逻辑
+            if (stayType === '宿舍') {
+                const existRecord = dataList.find(item => 
+                    item.stayType === '宿舍' && item.roomNum === roomNum
+                );
+                if (existRecord) {
+                    const existNames = existRecord.personList.map(p => p.name);
+                    personList.forEach(person => {
+                        if (!existNames.includes(person.name)) {
+                            existRecord.personList.push(person);
+                        }
+                    });
+                    alert(`✅ 已保存修改，并自动合并到【宿舍-${roomNum}】`);
+                } else {
+                    dataList.unshift({ id: Date.now(), stayType, roomNum, personList });
+                    alert('✅ 修改已保存');
+                }
+            } else {
+                dataList.unshift({ id: Date.now(), stayType, roomNum: roomNum || '-', personList });
+                alert('✅ 修改已保存');
+            }
+
+            // 关闭弹窗并刷新
+            closeModal();
+            saveData();
+            renderTable();
+        }
+
+        // 表格行点击编辑
+        function handleRowClick(id) {
+            editRecord(id);
+        }
+
+        // 删除记录
+        function deleteRecord(id) {
+            if (!confirm('确定要删除这条记录吗？删除后无法恢复！')) return;
+            dataList = dataList.filter(item => item.id !== id);
+            if (editingId === id) closeModal();
+            saveData();
+            renderTable();
+        }
+
+        // 一键清空所有数据
+        function clearAllData() {
+            if (!confirm('确定要清空所有数据吗？清空后无法恢复！')) return;
+            dataList = [];
+            closeModal();
+            initAddMode();
+            saveData();
+            renderTable();
+        }
+
+        // 本地数据保存
+        function saveData() {
+            localStorage.setItem('stayPersonData', JSON.stringify(dataList));
+        }
+
+        // ========== Excel导出功能 ==========
+        function exportToExcel() {
+            if (dataList.length === 0) {
+                alert('暂无数据，无法导出');
+                return;
+            }
+            if (typeof XLSX === 'undefined') {
+                alert('导出库加载失败，请检查网络连接后重试');
+                return;
+            }
+            const excelData = [];
+            // 表头
+            excelData.push(['序号', '住宿类型', '宿舍号', '人员姓名', '联系电话']);
+            
+            // 循环所有人员，每人一行
+            let serialNum = 1;
+            dataList.forEach(item => {
+                item.personList.forEach(person => {
+                    excelData.push([
+                        serialNum++,
+                        item.stayType,
+                        item.roomNum,
+                        person.name || '-',
+                        person.phone || '-'
+                    ]);
+                });
+            });
+            
+            // Android APK 使用原生离线 XLSX 生成器，不依赖网络或浏览器下载能力
+            if (window.AndroidBridge && typeof window.AndroidBridge.saveExcel === 'function') {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const fileName = `住宿人员名单统计_${year}${month}${day}.xlsx`;
+                window.AndroidBridge.saveExcel(fileName, JSON.stringify(excelData));
+                alert('已生成 Excel 文件，请在系统弹出的保存窗口中选择保存位置。');
+                return;
+            }
+
+            if (typeof XLSX === 'undefined') {
+                alert('导出库加载失败，请检查网络连接后重试');
+                return;
+            }
+
+            const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, '住宿人员名单');
+            
+            // 设置列宽和自动换行
+            worksheet['!cols'] = [
+                { wch: 6 },   // 序号
+                { wch: 12 },  // 住宿类型
+                { wch: 10 },  // 宿舍号
+                { wch: 12 },  // 人员姓名
+                { wch: 15 }   // 联系电话
+            ];
+            
+            // 设置单元格样式
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            for (let row = range.s.r; row <= range.e.r; row++) {
+                for (let col = range.s.c; col <= range.e.c; col++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+                    if (worksheet[cellAddress]) {
+                        worksheet[cellAddress].s = {
+                            alignment: { wrapText: true, vertical: 'center', horizontal: 'left' }
+                        };
+                    }
+                }
+            }
+            
+            // 生成文件名并下载
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const fileName = `住宿人员名单统计_${year}${month}${day}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+            alert('✅ Excel导出成功！多人同住将按每人一行显示，宿舍号自动重复匹配');
+        }
+
+        // ========== 表格渲染 ==========
+        function renderTable() {
+            // 应用搜索过滤
+            const filterList = filterData(dataList);
+            // 更新统计
+            const totalPerson = dataList.reduce((sum, item) => sum + item.personList.length, 0);
+            totalCountEl.textContent = dataList.length;
+            totalPersonCountEl.textContent = totalPerson;
+            matchCountEl.textContent = filterList.length;
+            // 空数据处理
+            if (filterList.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="empty-tip">暂无匹配数据</td></tr>`;
+                return;
+            }
+            // 渲染表格行
+            let html = '';
+            filterList.forEach((item, index) => {
+                // 高亮处理
+                const stayTypeHtml = highlightText(item.stayType, searchKeyword);
+                const roomNumHtml = highlightText(item.roomNum, searchKeyword);
+                const nameHtml = item.personList.map(p => highlightText(p.name, searchKeyword)).join('<br>');
+                const phoneHtml = item.personList.map(p => highlightText(p.phone || '-', searchKeyword)).join('<br>');
+                // 合并宿舍标识
+                const isMerged = item.stayType === '宿舍' && item.personList.length >= 2;
+                const finalRoomNumHtml = isMerged 
+                    ? `<span class="merged-room-num">${roomNumHtml}</span>` 
+                    : roomNumHtml;
+                html += `
+                <tr onclick="handleRowClick(${item.id})">
+                    <td>${index + 1}</td>
+                    <td>${stayTypeHtml}</td>
+                    <td>${finalRoomNumHtml}</td>
+                    <td>${nameHtml}</td>
+                    <td>${phoneHtml}</td>
+                    <td>
+                        <button class="btn-primary btn-small" onclick="event.stopPropagation(); editRecord(${item.id})">修改</button>
+                        <button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteRecord(${item.id})">删除</button>
+                    </td>
+                </tr>
+                `;
+            });
+            tableBody.innerHTML = html;
+        }
+
+        // 挂载全局函数
+        window.editRecord = editRecord;
+        window.deleteRecord = deleteRecord;
+        window.handleRowClick = handleRowClick;
+    </script>
+</body>
+</html>
