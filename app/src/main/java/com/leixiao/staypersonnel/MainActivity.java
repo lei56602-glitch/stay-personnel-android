@@ -320,9 +320,10 @@ public class MainActivity extends Activity {
             if(n.isEmpty()){toast("请输入人员姓名");return;}JSONObject o=new JSONObject();try{o.put("name",n);o.put("phone",p);}catch(Exception ignored){}people.put(o);
         }
         if(people.length()==0){toast("请至少填写1位人员姓名");return;}
-        String duplicates=findDuplicatePeople(people);
-        if(!duplicates.isEmpty()){new AlertDialog.Builder(this).setTitle("发现可能重复人员").setMessage(duplicates+"\\n\\n仍然继续录入吗？").setNegativeButton("取消",null).setPositiveButton("继续录入",(d,w)->performAddRecord(type,room,people)).show();return;}
-        performAddRecord(type,room,people);
+        final JSONArray peopleToAdd=people;
+        String duplicates=findDuplicatePeople(peopleToAdd);
+        if(!duplicates.isEmpty()){new AlertDialog.Builder(this).setTitle("发现可能重复人员").setMessage(duplicates+"\\n\\n仍然继续录入吗？").setNegativeButton("取消",null).setPositiveButton("继续录入",(d,w)->performAddRecord(type,room,peopleToAdd)).show();return;}
+        performAddRecord(type,room,peopleToAdd);
     }
     private String findDuplicatePeople(JSONArray incoming){
         java.util.LinkedHashSet<String> found=new java.util.LinkedHashSet<>();
