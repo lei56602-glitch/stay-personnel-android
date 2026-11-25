@@ -339,7 +339,7 @@ public class MainActivity extends Activity {
         }else{data=prepend(record(type,room.isEmpty()?"-":room,people));toast("记录添加成功");}
         nameInput.setText("");phoneInput.setText("");roomInput.setText("");recognizeInput.setText("");
         if(multiMode){multiRows.removeAllViews();addRows.clear();addPersonRow(multiRows,addRows);}
-        saveData();renderTable();
+        saveData();logAction("新增住宿记录","类型："+type+"；宿舍号："+room+"；人数："+people.length());renderTable();
     }
     private JSONObject record(String type,String room,JSONArray people){JSONObject o=new JSONObject();try{o.put("id",System.currentTimeMillis());o.put("stayType",type);o.put("roomNum",room);o.put("personList",people);}catch(Exception ignored){}return o;}
     private JSONArray prepend(JSONObject o){JSONArray n=new JSONArray();n.put(o);for(int i=0;i<data.length();i++)n.put(data.optJSONObject(i));return n;}
@@ -428,7 +428,7 @@ public class MainActivity extends Activity {
             removeById(id);
             if(type.equals("宿舍")){JSONObject exist=findDorm(rn);if(exist!=null){JSONArray oldPeople=exist.optJSONArray("personList");for(int i=0;i<plist.length();i++){JSONObject p=plist.optJSONObject(i);if(!containsName(oldPeople,p.optString("name")))oldPeople.put(p);}toast("已保存修改，并自动合并到【宿舍-"+rn+"】");}else{data=prepend(record(type,rn,plist));toast("修改已保存");}}
             else{data=prepend(record(type,rn.isEmpty()?"-":rn,plist));toast("修改已保存");}
-            saveData();renderTable();dlg.dismiss();
+            saveData();logAction("修改住宿记录","记录ID："+id+"；类型："+type+"；宿舍号："+rn+"；人数："+plist.length());renderTable();dlg.dismiss();
         });});
         dlg.show();dlg.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);editDialog=dlg;
     }
@@ -441,8 +441,8 @@ public class MainActivity extends Activity {
     private JSONObject findById(long id){for(int i=0;i<data.length();i++){JSONObject o=data.optJSONObject(i);if(o!=null&&o.optLong("id")==id)return o;}return null;}
     private void removeById(long id){JSONArray a=new JSONArray();for(int i=0;i<data.length();i++){JSONObject o=data.optJSONObject(i);if(o!=null&&o.optLong("id")!=id)a.put(o);}data=a;}
     private int typeIndex(String type){for(int i=0;i<TYPES.length;i++)if(TYPES[i].equals(type))return i;return 0;}
-    private void deleteRecord(long id){new AlertDialog.Builder(this).setMessage("确定要删除这条记录吗？删除后无法恢复！").setNegativeButton("取消",null).setPositiveButton("确定",(d,w)->{removeById(id);saveData();renderTable();}).show();}
-    private void confirmClear(){new AlertDialog.Builder(this).setMessage("确定要清空所有数据吗？清空后无法恢复！").setNegativeButton("取消",null).setPositiveButton("确定",(d,w)->{data=new JSONArray();multiMode=false;singleArea.setVisibility(View.VISIBLE);multiArea.setVisibility(View.GONE);modeButton.setText("切换批量录入模式");multiRows.removeAllViews();addRows.clear();saveData();renderTable();}).show();}
+    private void deleteRecord(long id){new AlertDialog.Builder(this).setMessage("确定要删除这条记录吗？删除后无法恢复！").setNegativeButton("取消",null).setPositiveButton("确定",(d,w)->{removeById(id);saveData();logAction("删除住宿记录","记录ID："+id);renderTable();}).show();}
+    private void confirmClear(){new AlertDialog.Builder(this).setMessage("确定要清空所有数据吗？清空后无法恢复！").setNegativeButton("取消",null).setPositiveButton("确定",(d,w)->{data=new JSONArray();logAction("清空全部数据","清空全部住宿记录");multiMode=false;singleArea.setVisibility(View.VISIBLE);multiArea.setVisibility(View.GONE);modeButton.setText("切换批量录入模式");multiRows.removeAllViews();addRows.clear();saveData();renderTable();}).show();}
     private void loadData(){try{String raw=getSharedPreferences("stay_personnel",MODE_PRIVATE).getString("stayPersonData","[]");data=new JSONArray(raw);}catch(Exception e){data=new JSONArray();}}
     private void saveData(){getSharedPreferences("stay_personnel",MODE_PRIVATE).edit().putString("stayPersonData",data.toString()).apply();}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
