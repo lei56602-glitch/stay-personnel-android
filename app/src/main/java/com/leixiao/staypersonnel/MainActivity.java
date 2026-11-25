@@ -15,6 +15,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -29,6 +30,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.OutputStream;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -42,6 +45,8 @@ import java.util.zip.ZipOutputStream;
 
 public class MainActivity extends Activity {
     private static final int CREATE_XLSX = 4102;
+    private static final int CREATE_BACKUP = 4103;
+    private static final int OPEN_BACKUP = 4104;
     private static final int INK = Color.rgb(45,55,72);
     private static final int MUTED = Color.rgb(74,85,104);
     private static final int PURPLE = Color.rgb(102,126,234);
@@ -65,6 +70,9 @@ public class MainActivity extends Activity {
     private AlertDialog editDialog;
     private String pendingExportName;
     private boolean compactScreen;
+    private boolean bulkMode=false;
+    private final java.util.LinkedHashSet<Long> selectedIds=new java.util.LinkedHashSet<>();
+    private static final String AUDIT_KEY="stayAuditLog";
 
     private static class PersonRow {
         EditText name, phone;
