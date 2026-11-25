@@ -396,14 +396,31 @@ public class MainActivity extends Activity {
             LinearLayout line=compactScreen?column():row();line.setPadding(dp(12),dp(12),dp(12),dp(12));line.setBackground(shape(i%2==0?Color.argb(195,255,255,255):Color.argb(155,255,255,255),Color.argb(70,102,126,234),12));if(compactScreen){LinearLayout top=row();top.addView(text("记录 "+(i+1),14,PURPLE,true),new LinearLayout.LayoutParams(0,-2,1));top.addView(text(type+(room.equals("-")?"":" · "+room),14,INK,true));line.addView(top);}
             if(bulkMode){CheckBox choose=new CheckBox(this);choose.setText("选择");choose.setTextSize(12);choose.setChecked(selectedIds.contains(id));choose.setOnCheckedChangeListener((v,checked)->{if(checked)selectedIds.add(id);else selectedIds.remove(id);});line.addView(choose,0);}
             if(!compactScreen){addCell(line,String.valueOf(i+1),widths[0],false);addCell(line,type,widths[1],false);addCell(line,room,widths[2],type.equals("宿舍")&&persons!=null&&persons.length()>=2);}else{TextView rt=text("宿舍号："+(room.equals("-")?"无":room),12,type.equals("宿舍")&&persons!=null&&persons.length()>=2?RED:MUTED,true);rt.setPadding(0,dp(4),0,dp(4));line.addView(rt);}
-            StringBuilder names=new StringBuilder(),phones=new StringBuilder();if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);if(j>0){names.append("\\n");phones.append("\\n");}names.append(p==null?"":p.optString("name"));phones.append(p==null?"-":p.optString("phone","-").isEmpty()?"-":p.optString("phone"));}
-            if(!compactScreen){addCell(line,names.toString(),widths[3],false);addCell(line,phones.toString(),widths[4],false);}else{TextView nt=text("人员："+names.toString().replace("\\n","、"),13,INK,false);line.addView(nt);TextView pt=text("电话："+phones.toString().replace("\\n","、"),13,MUTED,false);line.addView(pt);gap(line,8);}
+            StringBuilder names=new StringBuilder();if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);if(j>0)names.append("\\n");names.append(p==null?"":p.optString("name"));}
+            if(!compactScreen){
+                addCell(line,names.toString(),widths[3],false);
+                LinearLayout phoneList=column();if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);String number=p==null?"":p.optString("phone","").trim();LinearLayout phoneRow=row();TextView phoneText=text(number.isEmpty()?"-":number,12,MUTED,false);phoneText.setGravity(Gravity.CENTER_VERTICAL);phoneRow.addView(phoneText,new LinearLayout.LayoutParams(0,dp(34),1));if(!number.isEmpty())phoneRow.addView(callButton(number));phoneList.addView(phoneRow);}
+                line.addView(phoneList,new LinearLayout.LayoutParams(dp(widths[4]),-2));
+            }else{
+                if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);String personName=p==null?"":p.optString("name"),number=p==null?"":p.optString("phone","").trim();LinearLayout personRow=row();TextView nt=text(personName,13,INK,true);personRow.addView(nt,new LinearLayout.LayoutParams(dp(76),dp(38)));TextView pt=text(number.isEmpty()?"未填写电话":number,13,MUTED,false);pt.setGravity(Gravity.CENTER_VERTICAL);personRow.addView(pt,new LinearLayout.LayoutParams(0,dp(38),1));if(!number.isEmpty())personRow.addView(callButton(number));line.addView(personRow);}
+                gap(line,8);
+            }
             LinearLayout ops=row();Button edit=button("修改",PURPLE,Color.rgb(118,75,162),32);Button del=button("删除",RED,Color.rgb(197,48,48),32);
             ops.addView(edit,new LinearLayout.LayoutParams(dp(62),dp(32)));LinearLayout.LayoutParams dlp=new LinearLayout.LayoutParams(dp(62),dp(32));dlp.leftMargin=dp(5);ops.addView(del,dlp);
             if(compactScreen){LinearLayout.LayoutParams op=new LinearLayout.LayoutParams(-1,-2);op.topMargin=dp(8);line.addView(ops,op);}else line.addView(ops,new LinearLayout.LayoutParams(dp(widths[5]),-2));edit.setOnClickListener(v->openEdit(id));del.setOnClickListener(v->deleteRecord(id));
             line.setOnClickListener(v->openEdit(id));LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,-2);if(compactScreen)rowp.bottomMargin=dp(8);tableRows.addView(line,rowp);
         }
     }
+    private TextView callButton(String number){
+        TextView call=text("☎",19,Color.WHITE,true);call.setGravity(Gravity.CENTER);call.setContentDescription("拨打电话 "+number);call.setBackground(shape(GREEN,GREEN,18));call.setPadding(dp(8),0,dp(8),0);call.setMinWidth(dp(38));call.setHeight(dp(34));call.setClickable(true);call.setFocusable(true);call.setOnClickListener(v->openSystemDialer(number));return call;
+    }
+    private void openSystemDialer(String number){
+        String normalized=number.replaceAll("[^0-9+*#,;]","");
+        if(normalized.isEmpty()){toast("电话号码无效");return;}
+        try{Intent intent=new Intent(Intent.ACTION_DIAL,Uri.fromParts("tel",normalized,null));startActivity(intent);}
+        catch(Exception e){toast("未找到可用的系统拨号应用");}
+    }
+
     private void addCell(LinearLayout parent,String value,int width,boolean red){TextView t=text(value,13,red?RED:INK,red);t.setGravity(Gravity.CENTER_VERTICAL);t.setPadding(dp(2),0,dp(2),0);parent.addView(t,new LinearLayout.LayoutParams(dp(width),-2));}
 
     private void openEdit(long id){
