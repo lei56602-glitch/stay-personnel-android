@@ -309,14 +309,14 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("智能识别结果").setMessage(preview+"\\n\\n确认后填入录入表单？").setNegativeButton("重新检查",null).setPositiveButton("确认填充",(d,w)->{if(!parsedName.isEmpty())nameInput.setText(parsedName);if(!parsedPhone.isEmpty())phoneInput.setText(parsedPhone);if(!parsedRoom.isEmpty()){roomInput.setText(parsedRoom);typeSpinner.setSelection(0);updateRoomVisibility();}}).show();
     }
     private JSONArray collectRows(ArrayList<PersonRow> rows){
-        JSONArray a=new JSONArray();for(PersonRow r:rows){String n=r.name.getText().toString().trim(),p=r.phone.getText().toString().trim();if(!n.isEmpty()){JSONObject o=new JSONObject();try{o.put("name",n);o.put("phone",p);}catch(Exception ignored){}a.put(o);}}return a;
+        JSONArray a=new JSONArray();for(PersonRow r:rows){String n=r.name.getText().toString().trim(),p=r.phone.getText().toString().replaceAll("\\s+","");if(!n.isEmpty()){JSONObject o=new JSONObject();try{o.put("name",n);o.put("phone",p);}catch(Exception ignored){}a.put(o);}}return a;
     }
     private void addRecord(){
         String type=TYPES[typeSpinner.getSelectedItemPosition()],room=roomInput.getText().toString().trim();
         if((type.equals("宿舍")||type.equals("新房宿舍"))&&room.isEmpty()){toast("请输入宿舍号");return;}
         JSONArray people=new JSONArray();
         if(multiMode)people=collectRows(addRows);else{
-            String n=nameInput.getText().toString().trim(),p=phoneInput.getText().toString().trim();
+            String n=nameInput.getText().toString().trim(),p=phoneInput.getText().toString().replaceAll("\\s+","");
             if(n.isEmpty()){toast("请输入人员姓名");return;}JSONObject o=new JSONObject();try{o.put("name",n);o.put("phone",p);}catch(Exception ignored){}people.put(o);
         }
         if(people.length()==0){toast("请至少填写1位人员姓名");return;}
