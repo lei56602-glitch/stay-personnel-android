@@ -371,6 +371,7 @@ public class MainActivity extends Activity {
         for(int i=0;i<shown.length();i++){
             JSONObject o=shown.optJSONObject(i);if(o==null)continue;long id=o.optLong("id");String type=o.optString("stayType"),room=o.optString("roomNum");JSONArray persons=o.optJSONArray("personList");
             LinearLayout line=compactScreen?column():row();line.setPadding(dp(12),dp(12),dp(12),dp(12));line.setBackground(shape(i%2==0?Color.argb(195,255,255,255):Color.argb(155,255,255,255),Color.argb(70,102,126,234),12));if(compactScreen){LinearLayout top=row();top.addView(text("记录 "+(i+1),14,PURPLE,true),new LinearLayout.LayoutParams(0,-2,1));top.addView(text(type+(room.equals("-")?"":" · "+room),14,INK,true));line.addView(top);}
+            if(bulkMode){CheckBox choose=new CheckBox(this);choose.setText("选择");choose.setTextSize(12);choose.setChecked(selectedIds.contains(id));choose.setOnCheckedChangeListener((v,checked)->{if(checked)selectedIds.add(id);else selectedIds.remove(id);});line.addView(choose,0);}
             if(!compactScreen){addCell(line,String.valueOf(i+1),widths[0],false);addCell(line,type,widths[1],false);addCell(line,room,widths[2],type.equals("宿舍")&&persons!=null&&persons.length()>=2);}else{TextView rt=text("宿舍号："+(room.equals("-")?"无":room),12,type.equals("宿舍")&&persons!=null&&persons.length()>=2?RED:MUTED,true);rt.setPadding(0,dp(4),0,dp(4));line.addView(rt);}
             StringBuilder names=new StringBuilder(),phones=new StringBuilder();if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);if(j>0){names.append("\\n");phones.append("\\n");}names.append(p==null?"":p.optString("name"));phones.append(p==null?"-":p.optString("phone","-").isEmpty()?"-":p.optString("phone"));}
             if(!compactScreen){addCell(line,names.toString(),widths[3],false);addCell(line,phones.toString(),widths[4],false);}else{TextView nt=text("人员："+names.toString().replace("\\n","、"),13,INK,false);line.addView(nt);TextView pt=text("电话："+phones.toString().replace("\\n","、"),13,MUTED,false);line.addView(pt);gap(line,8);}
@@ -468,7 +469,10 @@ public class MainActivity extends Activity {
         startActivityForResult(intent,CREATE_XLSX);
     }
     @Override protected void onActivityResult(int requestCode,int resultCode,Intent intent){
-        super.onActivityResult(requestCode,resultCode,intent);if(requestCode!=CREATE_XLSX)return;
+        super.onActivityResult(requestCode,resultCode,intent);
+        if(requestCode==CREATE_BACKUP){if(resultCode==RESULT_OK&&intent!=null&&intent.getData()!=null)writeBackup(intent.getData());return;}
+        if(requestCode==OPEN_BACKUP){if(resultCode==RESULT_OK&&intent!=null&&intent.getData()!=null)readBackup(intent.getData());return;}
+        if(requestCode!=CREATE_XLSX)return;
         if(resultCode!=RESULT_OK||intent==null||intent.getData()==null){toast("已取消保存");return;}
         try(OutputStream out=getContentResolver().openOutputStream(intent.getData())){if(out==null)throw new Exception("无法打开保存位置");writeWorkbook(out);toast("Excel 文件已保存");}
         catch(Exception e){toast("Excel 保存失败："+e.getMessage());}
