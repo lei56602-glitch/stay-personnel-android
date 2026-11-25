@@ -337,8 +337,8 @@ public class MainActivity extends Activity {
     }
     private String findDuplicatePeople(JSONArray incoming){
         java.util.LinkedHashSet<String> found=new java.util.LinkedHashSet<>();
-        for(int i=0;i<incoming.length();i++){JSONObject p=incoming.optJSONObject(i);if(p==null)continue;String n=p.optString("name").trim(),ph=p.optString("phone").replaceAll("\\s+","");for(int j=0;j<data.length();j++){JSONObject r=data.optJSONObject(j);JSONArray ps=r==null?null:r.optJSONArray("personList");if(ps==null)continue;for(int k=0;k<ps.length();k++){JSONObject q=ps.optJSONObject(k);if(q==null)continue;String qn=q.optString("name").trim(),qp=q.optString("phone").replaceAll("\\\\s+","");if(n.equals(qn)&&(!ph.isEmpty()?ph.equals(qp):qp.isEmpty())){found.add(n);break;}}}}
-        return found.isEmpty()?"":"以下人员可能已经存在：\\n"+android.text.TextUtils.join("、",found);
+        for(int i=0;i<incoming.length();i++){JSONObject p=incoming.optJSONObject(i);if(p==null)continue;String n=p.optString("name").trim(),ph=p.optString("phone").replaceAll("\\s+","");for(int j=0;j<data.length();j++){JSONObject r=data.optJSONObject(j);JSONArray ps=r==null?null:r.optJSONArray("personList");if(ps==null)continue;for(int k=0;k<ps.length();k++){JSONObject q=ps.optJSONObject(k);if(q==null)continue;String qn=q.optString("name").trim(),qp=q.optString("phone").replaceAll("\\s+","");if(n.equals(qn)&&(!ph.isEmpty()?ph.equals(qp):qp.isEmpty())){found.add(n);break;}}}}
+        return found.isEmpty()?"":"以下人员可能已经存在：\n"+android.text.TextUtils.join("、",found);
     }
     private void performAddRecord(String type,String room,JSONArray people){
         if(type.equals("宿舍")){
