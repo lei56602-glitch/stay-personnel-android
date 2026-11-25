@@ -212,8 +212,8 @@ public class MainActivity extends Activity {
         actionTop.addView(modeButton,new LinearLayout.LayoutParams(0,dp(42),1));
         LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,dp(42),1); ap.leftMargin=dp(8);
         actionTop.addView(clear,ap); actions.addView(actionTop);
-        LinearLayout actionBottom=row(); LinearLayout.LayoutParams ebp=new LinearLayout.LayoutParams(-1,dp(42)); ebp.topMargin=dp(8);
-        actionBottom.addView(export,new LinearLayout.LayoutParams(-1,dp(42))); actions.addView(actionBottom);
+        LinearLayout actionBottom=row(); LinearLayout.LayoutParams ebp=new LinearLayout.LayoutParams(-1,dp(42)); ebp.topMargin=dp(14);
+        actionBottom.addView(export,new LinearLayout.LayoutParams(-1,dp(42))); actions.addView(actionBottom,ebp);
         operation.addView(actions);
         modeButton.setOnClickListener(v->toggleMode());
         clear.setOnClickListener(v->confirmClear());
