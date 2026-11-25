@@ -171,7 +171,10 @@ public class MainActivity extends Activity {
         subtitle.setGravity(Gravity.CENTER); subtitle.setPadding(0,dp(8),0,0);
         header.addView(title); header.addView(subtitle);
         content.addView(header,new LinearLayout.LayoutParams(-1,-2));
-        gap(content,14);
+        Button management=button("数据管理与统计",PURPLE,Color.rgb(118,75,162),40);
+        LinearLayout.LayoutParams mgp=new LinearLayout.LayoutParams(-1,dp(40));mgp.topMargin=dp(10);content.addView(management,mgp);
+        management.setOnClickListener(v->showManagementMenu());
+        gap(content,10);
 
         LinearLayout operation=card(14); content.addView(operation,new LinearLayout.LayoutParams(-1,-2));
         LinearLayout ai=column(); ai.setPadding(dp(12),dp(12),dp(12),dp(12));
