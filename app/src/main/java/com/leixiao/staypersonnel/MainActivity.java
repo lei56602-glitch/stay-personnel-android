@@ -303,8 +303,10 @@ public class MainActivity extends Activity {
         else {Matcher pure=Pattern.compile("(?:^|[^\\d])(\\d{3,4}[A-Za-z]?)(?:$|[^\\d])").matcher(work);if(pure.find()){room=pure.group(1);work=pure.replaceFirst(" ");}}
         work=work.replaceAll("姓名|名字|电话|手机|手机号|宿舍|宿舍号|房号|房间号|住宿|类型|：|:|;|；|,|，|、|\\.|。|\\?|？|!|！|\\s","");
         Matcher nm=Pattern.compile("[\\u4e00-\\u9fa5]{2,4}").matcher(work);if(nm.find())person=nm.group();else person=work;
-        if(!person.isEmpty())nameInput.setText(person);if(!phone.isEmpty())phoneInput.setText(phone);
-        if(!room.isEmpty()){roomInput.setText(room);typeSpinner.setSelection(0);updateRoomVisibility();}
+        final String parsedName=person,parsedPhone=phone,parsedRoom=room;
+        if(parsedName.isEmpty()&&parsedPhone.isEmpty()&&parsedRoom.isEmpty()){toast("未能识别出有效信息，请检查文本格式");return;}
+        String preview="姓名："+(parsedName.isEmpty()?"未识别":parsedName)+"\\n联系电话："+(parsedPhone.isEmpty()?"未识别":parsedPhone)+"\\n宿舍号："+(parsedRoom.isEmpty()?"未识别":parsedRoom);
+        new AlertDialog.Builder(this).setTitle("智能识别结果").setMessage(preview+"\\n\\n确认后填入录入表单？").setNegativeButton("重新检查",null).setPositiveButton("确认填充",(d,w)->{if(!parsedName.isEmpty())nameInput.setText(parsedName);if(!parsedPhone.isEmpty())phoneInput.setText(parsedPhone);if(!parsedRoom.isEmpty()){roomInput.setText(parsedRoom);typeSpinner.setSelection(0);updateRoomVisibility();}}).show();
     }
     private JSONArray collectRows(ArrayList<PersonRow> rows){
         JSONArray a=new JSONArray();for(PersonRow r:rows){String n=r.name.getText().toString().trim(),p=r.phone.getText().toString().trim();if(!n.isEmpty()){JSONObject o=new JSONObject();try{o.put("name",n);o.put("phone",p);}catch(Exception ignored){}a.put(o);}}return a;
