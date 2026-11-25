@@ -444,7 +444,12 @@ public class MainActivity extends Activity {
             field(peopleBox,"人员姓名",singleFields[0]);gap(peopleBox,8);field(peopleBox,"联系电话",singleFields[1]);
         }
         body.addView(peopleBox);
-        ScrollView scroll=new ScrollView(this);scroll.addView(body);
+        ScrollView scroll=new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setSmoothScrollingEnabled(true);
+        scroll.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        scroll.addView(body);
+        attachKeyboardAutoScroll(body,scroll);
         AlertDialog dlg=new AlertDialog.Builder(this).setTitle("编辑住宿记录").setView(scroll)
             .setNegativeButton("取消",null).setPositiveButton("保存修改",null).create();
         dlg.setOnShowListener(v->{dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(b->{
@@ -459,6 +464,21 @@ public class MainActivity extends Activity {
             saveData();logAction("修改住宿记录","记录ID："+id+"；类型："+type+"；宿舍号："+rn+"；人数："+plist.length());renderTable();dlg.dismiss();
         });});
         dlg.show();dlg.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);editDialog=dlg;
+    }
+    private void attachKeyboardAutoScroll(View root,ScrollView scroll){
+        if(root instanceof EditText){
+            root.setOnFocusChangeListener((v,hasFocus)->{
+                if(hasFocus)scroll.post(()->{
+                    android.graphics.Rect rect=new android.graphics.Rect();
+                    v.getDrawingRect(rect);
+                    scroll.requestChildRectangleOnScreen(v,rect,true);
+                });
+            });
+        }
+        if(root instanceof ViewGroup){
+            ViewGroup group=(ViewGroup)root;
+            for(int i=0;i<group.getChildCount();i++)attachKeyboardAutoScroll(group.getChildAt(i),scroll);
+        }
     }
     private void addDialogPerson(LinearLayout parent,ArrayList<PersonRow> rows,String name,String phone){
         LinearLayout line=row();LinearLayout fields=row();EditText n=edit("请输入姓名",false),p=edit("请输入联系电话",true);n.setText(name);p.setText(phone);
