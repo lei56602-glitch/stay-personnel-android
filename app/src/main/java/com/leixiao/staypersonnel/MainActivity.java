@@ -402,17 +402,20 @@ public class MainActivity extends Activity {
                 LinearLayout phoneList=column();if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);String number=p==null?"":p.optString("phone","").trim();LinearLayout phoneRow=row();TextView phoneText=text(number.isEmpty()?"-":number,12,MUTED,false);phoneText.setGravity(Gravity.CENTER_VERTICAL);phoneRow.addView(phoneText,new LinearLayout.LayoutParams(0,dp(34),1));if(!number.isEmpty())phoneRow.addView(callButton(number));phoneList.addView(phoneRow);}
                 line.addView(phoneList,new LinearLayout.LayoutParams(dp(widths[4]),-2));
             }else{
-                if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);String personName=p==null?"":p.optString("name"),number=p==null?"":p.optString("phone","").trim();LinearLayout personRow=row();TextView nt=text(personName,13,INK,true);personRow.addView(nt,new LinearLayout.LayoutParams(dp(76),dp(38)));TextView pt=text(number.isEmpty()?"未填写电话":number,13,MUTED,false);pt.setGravity(Gravity.CENTER_VERTICAL);personRow.addView(pt,new LinearLayout.LayoutParams(0,dp(38),1));if(!number.isEmpty())personRow.addView(callButton(number));line.addView(personRow);}
+                if(persons!=null)for(int j=0;j<persons.length();j++){JSONObject p=persons.optJSONObject(j);String personName=p==null?"":p.optString("name"),number=p==null?"":p.optString("phone","").trim();LinearLayout personRow=row();TextView nt=text(personName,17,INK,true);nt.setGravity(Gravity.CENTER_VERTICAL);nt.setMaxLines(1);nt.setEllipsize(android.text.TextUtils.TruncateAt.END);nt.setPadding(0,0,dp(8),0);personRow.addView(nt,new LinearLayout.LayoutParams(dp(104),dp(44)));TextView pt=text(number.isEmpty()?"未填写电话":number,14,MUTED,false);pt.setGravity(Gravity.CENTER_VERTICAL);pt.setMaxLines(1);pt.setEllipsize(android.text.TextUtils.TruncateAt.END);personRow.addView(pt,new LinearLayout.LayoutParams(0,dp(44),1));if(!number.isEmpty())personRow.addView(callButton(number));line.addView(personRow);}
                 gap(line,8);
             }
-            LinearLayout ops=row();Button edit=button("修改",PURPLE,Color.rgb(118,75,162),32);Button del=button("删除",RED,Color.rgb(197,48,48),32);
-            ops.addView(edit,new LinearLayout.LayoutParams(dp(62),dp(32)));LinearLayout.LayoutParams dlp=new LinearLayout.LayoutParams(dp(62),dp(32));dlp.leftMargin=dp(5);ops.addView(del,dlp);
-            if(compactScreen){LinearLayout.LayoutParams op=new LinearLayout.LayoutParams(-1,-2);op.topMargin=dp(8);line.addView(ops,op);}else line.addView(ops,new LinearLayout.LayoutParams(dp(widths[5]),-2));edit.setOnClickListener(v->openEdit(id));del.setOnClickListener(v->deleteRecord(id));
+            LinearLayout ops=row();Button edit=compactScreen?secondaryActionButton("修改",PURPLE):button("修改",PURPLE,Color.rgb(118,75,162),32);Button del=compactScreen?secondaryActionButton("删除",Color.rgb(190,65,75)):button("删除",RED,Color.rgb(197,48,48),32);
+            ops.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);ops.addView(edit,new LinearLayout.LayoutParams(dp(compactScreen?68:62),dp(compactScreen?40:32)));LinearLayout.LayoutParams dlp=new LinearLayout.LayoutParams(dp(compactScreen?68:62),dp(compactScreen?40:32));dlp.leftMargin=dp(7);ops.addView(del,dlp);
+            if(compactScreen){LinearLayout.LayoutParams op=new LinearLayout.LayoutParams(-1,-2);op.topMargin=dp(10);line.addView(ops,op);}else line.addView(ops,new LinearLayout.LayoutParams(dp(widths[5]),-2));edit.setOnClickListener(v->openEdit(id));del.setOnClickListener(v->deleteRecord(id));
             line.setOnClickListener(v->openEdit(id));LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,-2);if(compactScreen)rowp.bottomMargin=dp(8);tableRows.addView(line,rowp);
         }
     }
     private TextView callButton(String number){
         TextView call=text("☎",19,Color.WHITE,true);call.setGravity(Gravity.CENTER);call.setContentDescription("拨打电话 "+number);call.setBackground(shape(GREEN,GREEN,18));call.setPadding(dp(8),0,dp(8),0);call.setMinWidth(dp(38));call.setHeight(dp(34));call.setClickable(true);call.setFocusable(true);call.setOnClickListener(v->openSystemDialer(number));return call;
+    }
+    private Button secondaryActionButton(String label,int color){
+        Button b=new Button(this);b.setText(label);b.setTextSize(13);b.setTextColor(color);b.setAllCaps(false);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setPadding(dp(8),0,dp(8),0);b.setMinHeight(dp(40));b.setMinimumHeight(dp(40));b.setBackground(shape(Color.argb(24,color==PURPLE?102:190,color==PURPLE?126:65,color==PURPLE?234:75),Color.argb(70,color==PURPLE?102:190,color==PURPLE?126:65,color==PURPLE?234:75),9));b.setElevation(0);return b;
     }
     private void openSystemDialer(String number){
         String normalized=number.replaceAll("[^0-9+*#,;]","");
