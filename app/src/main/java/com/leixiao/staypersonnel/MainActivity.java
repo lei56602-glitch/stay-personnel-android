@@ -320,6 +320,16 @@ public class MainActivity extends Activity {
             if(n.isEmpty()){toast("请输入人员姓名");return;}JSONObject o=new JSONObject();try{o.put("name",n);o.put("phone",p);}catch(Exception ignored){}people.put(o);
         }
         if(people.length()==0){toast("请至少填写1位人员姓名");return;}
+        String duplicates=findDuplicatePeople(people);
+        if(!duplicates.isEmpty()){new AlertDialog.Builder(this).setTitle("发现可能重复人员").setMessage(duplicates+"\\n\\n仍然继续录入吗？").setNegativeButton("取消",null).setPositiveButton("继续录入",(d,w)->performAddRecord(type,room,people)).show();return;}
+        performAddRecord(type,room,people);
+    }
+    private String findDuplicatePeople(JSONArray incoming){
+        java.util.LinkedHashSet<String> found=new java.util.LinkedHashSet<>();
+        for(int i=0;i<incoming.length();i++){JSONObject p=incoming.optJSONObject(i);if(p==null)continue;String n=p.optString("name").trim(),ph=p.optString("phone").replaceAll("\\\\s+","");for(int j=0;j<data.length();j++){JSONObject r=data.optJSONObject(j);JSONArray ps=r==null?null:r.optJSONArray("personList");if(ps==null)continue;for(int k=0;k<ps.length();k++){JSONObject q=ps.optJSONObject(k);if(q==null)continue;String qn=q.optString("name").trim(),qp=q.optString("phone").replaceAll("\\\\s+","");if(n.equals(qn)&&(!ph.isEmpty()?ph.equals(qp):qp.isEmpty())){found.add(n);break;}}}}
+        return found.isEmpty()?"":"以下人员可能已经存在：\\n"+android.text.TextUtils.join("、",found);
+    }
+    private void performAddRecord(String type,String room,JSONArray people){
         if(type.equals("宿舍")){
             JSONObject existing=findDorm(room);
             if(existing!=null){JSONArray old=existing.optJSONArray("personList");int count=0;
