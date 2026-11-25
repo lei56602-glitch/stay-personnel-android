@@ -435,9 +435,9 @@ public class MainActivity extends Activity {
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
 
     private void showManagementMenu(){
-        String[] items={"统计分析","数据备份","恢复备份","批量管理/退出批量管理","数据修改记录"};
+        String[] items={"统计分析","数据备份","恢复备份","批量管理/退出批量管理","删除已选记录","批量修改已选记录","数据修改记录"};
         new AlertDialog.Builder(this).setTitle("数据管理中心").setItems(items,(d,which)->{
-            if(which==0)showStatistics();else if(which==1)createBackup();else if(which==2)chooseBackup();else if(which==3){bulkMode=!bulkMode;if(!bulkMode)selectedIds.clear();renderTable();toast(bulkMode?"已进入批量管理，请勾选记录":"已退出批量管理");}else showAuditLog();
+            if(which==0)showStatistics();else if(which==1)createBackup();else if(which==2)chooseBackup();else if(which==3){bulkMode=!bulkMode;if(!bulkMode)selectedIds.clear();renderTable();toast(bulkMode?"已进入批量管理，请勾选记录":"已退出批量管理");}else if(which==4)deleteSelected();else if(which==5)editSelected();else showAuditLog();
         }).show();
     }
     private void showStatistics(){
