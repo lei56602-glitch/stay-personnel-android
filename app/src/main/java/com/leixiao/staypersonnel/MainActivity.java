@@ -173,7 +173,7 @@ public class MainActivity extends Activity {
         frame.setBackground(bg);
         ScrollView scroll=new ScrollView(this); scroll.setFillViewport(false);
         frame.setFitsSystemWindows(true);
-        LinearLayout content=column(); content.setPadding(dp(12),dp(18),dp(12),dp(116));
+        LinearLayout content=column(); content.setPadding(dp(12),dp(18),dp(12),dp(160));
         scroll.addView(content); frame.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout header=card(20); header.setGravity(Gravity.CENTER);
         TextView title=text("住宿人员名单统计系统",24,INK,true); title.setGravity(Gravity.CENTER);
@@ -257,9 +257,9 @@ public class MainActivity extends Activity {
         filterTypeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?>p,View v,int pos,long id){filterType=pos==0?"":TYPES[pos-1];renderTable();}public void onNothingSelected(android.widget.AdapterView<?>p){}});
         filterRoomInput.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){filterRoom=s.toString().trim().toLowerCase(Locale.ROOT);renderTable();}public void afterTextChanged(android.text.Editable e){}});
         advanced.setOnClickListener(v->{advancedOpen=!advancedOpen;advancedArea.setVisibility(advancedOpen?View.VISIBLE:View.GONE);});
-        statsArea=row(); statsArea.setPadding(0,dp(12),0,dp(2));
-        totalCount=text("总记录数：0 条",13,INK,false); totalPeople=text("总人数：0 人",13,INK,false); matchCount=text("搜索匹配：0 条",13,INK,false);
-        statsArea.addView(totalCount,new LinearLayout.LayoutParams(0,-2,1)); statsArea.addView(totalPeople,new LinearLayout.LayoutParams(0,-2,1)); statsArea.addView(matchCount,new LinearLayout.LayoutParams(0,-2,1));
+        statsArea=compactScreen?column():row(); statsArea.setPadding(0,dp(12),0,dp(2));
+        totalCount=text("总记录数：0 条",13,INK,true); totalPeople=text("总人数：0 人",13,INK,true); matchCount=text("搜索匹配：0 条",13,INK,true);
+        if(compactScreen){statsArea.addView(totalCount);gap(statsArea,6);statsArea.addView(totalPeople);gap(statsArea,6);statsArea.addView(matchCount);}else{statsArea.addView(totalCount,new LinearLayout.LayoutParams(0,-2,1));statsArea.addView(totalPeople,new LinearLayout.LayoutParams(0,-2,1));statsArea.addView(matchCount,new LinearLayout.LayoutParams(0,-2,1));}
         searchCard.addView(statsArea); operation.addView(searchCard);
 
         LinearLayout tableCard=card(0); LinearLayout.LayoutParams tcp=new LinearLayout.LayoutParams(-1,-2); tcp.topMargin=dp(14); content.addView(tableCard,tcp);
